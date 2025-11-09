@@ -1,12 +1,9 @@
-// controllers/unitController.js
 const Unit = require("../models/Unit");
 const Recipe = require("../models/Recipe");
 
 /* ===================================================
    🏗️ 1️⃣ Yangi Unit (bo‘lim) yaratish
 =================================================== */
-
-/* 🏗️ Yangi bo‘lim yaratish */
 exports.createUnit = async (req, res) => {
   try {
     const { nom, turi, qavat } = req.body;
@@ -51,6 +48,7 @@ exports.createUnit = async (req, res) => {
     res.status(500).json({ success: false, message: "Server xatosi" });
   }
 };
+
 /* ===================================================
    📋 2️⃣ Barcha bo‘limlarni olish
 =================================================== */
@@ -87,24 +85,40 @@ exports.getUnitById = async (req, res) => {
 };
 
 /* ===================================================
-   🔎 4️⃣ Kod orqali bo‘limni olish
+   🔎 4️⃣ Bo‘limni unit_code orqali olish (YAKUNIY)
 =================================================== */
 exports.getUnitByCode = async (req, res) => {
   try {
     const { code } = req.params;
+
+    if (!code || typeof code !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Unit code kiritilishi shart",
+      });
+    }
+
     const unit = await Unit.findOne({ unit_code: code.toUpperCase() });
 
     if (!unit) {
       return res.status(404).json({
         success: false,
-        message: "Bo‘lim topilmadi yoki kod noto‘g‘ri",
+        message: "Bo‘lim topilmadi yoki code noto‘g‘ri",
       });
     }
 
     res.json({
       success: true,
-      message: "Bo‘lim ma’lumoti topildi",
-      data: unit,
+      message: "Bo‘lim topildi ✅",
+      data: {
+        id: unit._id,
+        nom: unit.nom,
+        turi: unit.turi,
+        qavat: unit.qavat,
+        unit_code: unit.unit_code,
+        kategoriyalar: unit.kategoriyalar || [],
+        unit_ombor: unit.unit_ombor || [],
+      },
     });
   } catch (err) {
     console.error("getUnitByCode error:", err);
@@ -133,17 +147,9 @@ exports.addCategory = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Bo‘lim topilmadi" });
 
-    // 🔹 Eski yoki yangi formatdagi kategoriyalarni tekshirish
-    const exists = unit.kategoriyalar.find((cat) => {
-      if (typeof cat === "string") {
-        // eski format uchun
-        return cat.toLowerCase() === kategoriya.toLowerCase();
-      } else if (cat.nom) {
-        // yangi format uchun
-        return cat.nom.toLowerCase() === kategoriya.toLowerCase();
-      }
-      return false;
-    });
+    const exists = unit.kategoriyalar.find(
+      (cat) => cat.nom.toLowerCase() === kategoriya.toLowerCase()
+    );
 
     if (exists) {
       return res.status(400).json({
@@ -152,18 +158,13 @@ exports.addCategory = async (req, res) => {
       });
     }
 
-    // 🔹 Yangi obyekt formatida qo‘shish
     unit.kategoriyalar.push({ nom: kategoriya.trim() });
-
     await unit.save();
-
-    // 🔹 Yangilangan unitni qaytarish
-    const updated = await Unit.findById(req.params.id);
 
     res.json({
       success: true,
       message: "Kategoriya muvaffaqiyatli qo‘shildi ✅",
-      data: updated,
+      data: unit.kategoriyalar,
     });
   } catch (err) {
     console.error("addCategory error:", err);
@@ -189,39 +190,113 @@ exports.deleteUnit = async (req, res) => {
   }
 };
 
-
-
-exports.getCategoryWithRecipe = async (req, res) => {
+/* ===================================================
+   🔹 7️⃣ Bo‘lim kategoriyalarini olish
+=================================================== */
+exports.getUnitCategories = async (req, res) => {
   try {
-    const { unit_id, kategoriya_id } = req.params;
+    const { id } = req.params;
+    const unit = await Unit.findById(id);
 
-    // 🔹 Bo‘limni topamiz
-    const unit = await Unit.findById(unit_id);
-    if (!unit)
+    if (!unit) {
       return res
         .status(404)
         .json({ success: false, message: "Bo‘lim topilmadi" });
-
-    // 🔹 Kategoriyani topamiz
-    const kategoriya = unit.kategoriyalar.id(kategoriya_id);
-    if (!kategoriya)
-      return res
-        .status(404)
-        .json({ success: false, message: "Kategoriya topilmadi" });
-
-    // 🔹 Shu kategoriya uchun tex kartani topamiz
-    const recipe = await Recipe.findOne({
-      unit_id,
-      kategoriya_id,
-    }).select("mahsulotlar umumiy_hajm status createdAt");
+    }
 
     res.json({
       success: true,
-      kategoriya,
-      tex_karta: recipe || null,
+      message: "Bo‘lim kategoriyalari",
+      data: unit.kategoriyalar,
     });
-  } catch (err) {
-    console.error("getCategoryWithRecipe error:", err);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+  } catch (error) {
+    console.error("getUnitCategories error:", error);
+    res.status(500).json({ success: false, message: "Server xatolik", error });
+  }
+};
+
+/* ===================================================
+   📦 8️⃣ Bo‘lim ichki omboriga kirim qilish
+=================================================== */
+exports.addToUnitOmbor = async (req, res) => {
+  try {
+    const { id } = req.params; // unit id
+    const { kategoriya_id, miqdor, saqlanadigan_joy } = req.body;
+
+    const unit = await Unit.findById(id);
+    if (!unit) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Bo‘lim topilmadi" });
+    }
+
+    // 🔍 Kategoriya nomini unit ichidan topamiz
+    const kategoriya = unit.kategoriyalar.find(
+      (k) => k._id.toString() === kategoriya_id
+    );
+
+    if (!kategoriya) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Kategoriya topilmadi" });
+    }
+
+    if (!unit.unit_ombor) unit.unit_ombor = [];
+
+    // 🔍 Omborda shu mahsulot bormi?
+    const existing = unit.unit_ombor.find(
+      (item) => item.kategoriya_id.toString() === kategoriya_id
+    );
+
+    if (existing) {
+      existing.miqdor += Number(miqdor);
+    } else {
+      unit.unit_ombor.push({
+        kategoriya_id,
+        kategoriya_nomi: kategoriya.nom,
+        miqdor: Number(miqdor),
+        saqlanadigan_joy: saqlanadigan_joy || "haladenik",
+      });
+    }
+
+    await unit.save();
+
+    res.json({
+      success: true,
+      message: "✅ Mahsulot unit omboriga kiritildi",
+      data: unit.unit_ombor,
+    });
+  } catch (error) {
+    console.error("addToUnitOmbor error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server xatolik",
+      error: error.message,
+    });
+  }
+};
+
+/* ===================================================
+   📋 9️⃣ Unit ichki omborini ko‘rish
+=================================================== */
+exports.getUnitOmbor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const unit = await Unit.findById(id);
+
+    if (!unit) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Bo‘lim topilmadi" });
+    }
+
+    res.json({
+      success: true,
+      message: "Bo‘lim ichki ombori",
+      data: unit.unit_ombor || [],
+    });
+  } catch (error) {
+    console.error("getUnitOmbor error:", error);
+    res.status(500).json({ success: false, message: "Server xatolik", error });
   }
 };

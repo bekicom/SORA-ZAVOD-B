@@ -12,6 +12,55 @@ const CategorySchema = new mongoose.Schema(
   { _id: true, timestamps: false }
 );
 
+// 🔹 Har bir bo‘limning ichki ombori uchun subdocument
+const UnitOmborSchema = new mongoose.Schema(
+  {
+    kategoriya_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: [true, "Kategoriya ID kiritilishi kerak"],
+    },
+    kategoriya_nomi: {
+      type: String,
+      required: [true, "Kategoriya nomi kiritilishi kerak"],
+      trim: true,
+    },
+    miqdor: {
+      type: Number,
+      default: 0,
+      min: [0, "Miqdor manfiy bo‘lmasligi kerak"],
+    },
+    birlik: {
+      type: String,
+      default: "dona",
+      enum: [
+        "dona",
+        "kg",
+        "litr",
+        "metr",
+        "qop",
+        "ta",
+        "ml",
+        "gramm",
+        "tonna",
+        "upakovka",
+        "box",
+        "bo‘lak",
+      ],
+    },
+    saqlanadigan_joy: {
+      type: String,
+      enum: ["haladenik", "ombor"],
+      default: "haladenik",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true, timestamps: false }
+);
+
+// 🔹 Asosiy Unit sxemasi
 const UnitSchema = new mongoose.Schema(
   {
     // Bo‘lim nomi
@@ -45,9 +94,15 @@ const UnitSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 🔹 Kategoriyalar endi obyekt ko‘rinishida
+    // 🔹 Kategoriyalar
     kategoriyalar: {
       type: [CategorySchema],
+      default: [],
+    },
+
+    // 🔹 Bo‘limning ichki ombori
+    unit_ombor: {
+      type: [UnitOmborSchema],
       default: [],
     },
 

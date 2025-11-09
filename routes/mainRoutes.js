@@ -6,6 +6,8 @@ const adminAuth = require("../controllers/adminAuthController");
 const unitCtrl = require("../controllers/unitController");
 const recipeCtrl = require("../controllers/recipeController");
 const warehouseCtrl = require("../controllers/warehouseController");
+const warehouseOrderCtrl = require("../controllers/warehouseOrderController");
+const mainWarehouseCtrl = require("../controllers/mainWarehouseController");
 
 // === Middlewarelar ===
 const { authenticate, authorize } = require("../middleware/auth");
@@ -27,33 +29,70 @@ router.post(
   authorize(["admin"]),
   unitCtrl.createUnit
 );
+
 router.get("/units", authenticate, authorize(["admin"]), unitCtrl.getUnits);
+
 router.get(
   "/units/:id",
   authenticate,
   authorize(["admin"]),
   unitCtrl.getUnitById
 );
+
 router.post(
   "/units/:id/add-category",
   authenticate,
   authorize(["admin"]),
   unitCtrl.addCategory
 );
+
 router.delete(
   "/units/:id",
   authenticate,
   authorize(["admin"]),
   unitCtrl.deleteUnit
 );
-// 🔍 Kategoriya va unga biriktirilgan tex kartani olish
+
+/* 🔍 Kategoriya va unga biriktirilgan tex kartani olish */
+if (unitCtrl.getCategoryWithRecipe) {
+  router.get(
+    "/units/:unit_id/category/:kategoriya_id",
+    authenticate,
+    authorize(["admin"]),
+    unitCtrl.getCategoryWithRecipe
+  );
+}
+
+/* 🔎 Unitni code orqali olish */
+router.get("/units/code/:code", unitCtrl.getUnitByCode);
+
+/* =======================================================
+   🧊 UNIT OMBORI (ICHKI OMBOR)
+======================================================= */
+
+// 🔹 Bo‘limdagi kategoriyalarni olish
 router.get(
-  "/units/:unit_id/category/:kategoriya_id",
-  authenticate,
-  authorize(["admin"]),
-  unitCtrl.getCategoryWithRecipe
+  "/units/:id/categories",
+  // authenticate,
+  // authorize(["admin", "unit"]),
+  unitCtrl.getUnitCategories
 );
 
+// 🔹 Bo‘lim ichki omboriga kirim qilish
+router.post(
+  "/units/:id/add-to-ombor",
+  // authenticate,
+  // authorize(["admin", "unit"]),
+  unitCtrl.addToUnitOmbor
+);
+
+// 🔹 Bo‘lim ichki omboridagi mahsulotlarni ko‘rish
+router.get(
+  "/units/:id/unit-ombor",
+  // authenticate,
+  // authorize(["admin", "unit"]),
+  unitCtrl.getUnitOmbor
+);
 
 /* =======================================================
    📋 RECIPE (TEX KARTALAR)
@@ -156,11 +195,50 @@ router.get(
   authorize(["admin"]),
   warehouseCtrl.getKirimlar
 );
+
 router.get(
   "/warehouse/:id/chiqimlar",
   authenticate,
   authorize(["admin"]),
   warehouseCtrl.getChiqimlar
+);
+
+/* =======================================================
+   📦 OMBORGA ZAKAS (WAREHOUSE ORDERS)
+======================================================= */
+// ➕ Yangi zakas yaratish
+router.post(
+  "/warehouse-orders/create",
+  warehouseOrderCtrl.createOrder // vaqtincha tokenni olib tashladik
+);
+
+// 📋 Barcha zakaslarni olish
+router.get(
+  "/warehouse-orders",
+  authenticate,
+  authorize(["admin"]),
+  warehouseOrderCtrl.getOrders
+);
+
+// ✅ Zakasni tasdiqlash (admin)
+router.put(
+  "/warehouse-orders/:id/approve",
+  authenticate,
+  authorize(["admin"]),
+  warehouseOrderCtrl.approveOrder
+);
+router.post(
+  "/main-warehouse/kirim",
+  authenticate,
+  authorize(["admin"]),
+  mainWarehouseCtrl.createKirim
+);
+
+router.get(
+  "/main-warehouse",
+  authenticate,
+  authorize(["admin"]),
+  mainWarehouseCtrl.getProducts
 );
 
 module.exports = router;

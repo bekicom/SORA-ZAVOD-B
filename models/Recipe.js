@@ -9,7 +9,7 @@ const RecipeSchema = new mongoose.Schema(
       required: [true, "Bo‘lim ID (unit_id) kiritilishi kerak"],
     },
 
-    // 🔹 Qaysi kategoriya uchun tex karta yozilmoqda (bo‘lim ichidagi)
+    // 🔹 Qaysi kategoriya uchun tex karta yozilmoqda
     kategoriya_id: {
       type: mongoose.Schema.Types.ObjectId,
       required: [true, "Kategoriya ID (kategoriya_id) kiritilishi kerak"],
@@ -26,7 +26,25 @@ const RecipeSchema = new mongoose.Schema(
       {
         nom: { type: String, required: true, trim: true },
         miqdor: { type: Number, required: true },
-        birlik: { type: String, required: true, trim: true },
+        birlik: {
+          type: String,
+          required: true,
+          trim: true,
+          enum: [
+            "dona",
+            "ta",
+            "kg",
+            "g",
+            "l",
+            "ml",
+            "m",
+            "sm",
+            "m2",
+            "m3",
+            "qop",
+            "quti",
+          ],
+        },
       },
     ],
 
