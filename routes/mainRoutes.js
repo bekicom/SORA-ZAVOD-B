@@ -8,6 +8,7 @@ const recipeCtrl = require("../controllers/recipeController");
 const warehouseCtrl = require("../controllers/warehouseController");
 const warehouseOrderCtrl = require("../controllers/warehouseOrderController");
 const mainWarehouseCtrl = require("../controllers/mainWarehouseController");
+const unitInvoiceCtrl = require("../controllers/unitInvoiceController");
 
 // === Middlewarelar ===
 const { authenticate, authorize } = require("../middleware/auth");
@@ -223,22 +224,30 @@ router.get(
 // ✅ Zakasni tasdiqlash (admin)
 router.put(
   "/warehouse-orders/:id/approve",
-  authenticate,
-  authorize(["admin"]),
+
   warehouseOrderCtrl.approveOrder
-);
-router.post(
-  "/main-warehouse/kirim",
-  authenticate,
-  authorize(["admin"]),
-  mainWarehouseCtrl.createKirim
 );
 
 router.get(
   "/main-warehouse",
-  authenticate,
-  authorize(["admin"]),
+
   mainWarehouseCtrl.getProducts
 );
+router.get(
+  "/main-warehouse/unit/:unit_id/history",
+  mainWarehouseCtrl.getUnitKirimHistory
+);
 
+router.get(
+  "/main-warehouse/admin-view",
+
+  mainWarehouseCtrl.getAdminView
+);
+
+// 🧾 UNIT FAKTURALAR
+router.post("/unit-invoices/create", unitInvoiceCtrl.createInvoice);
+router.get("/unit-invoices", unitInvoiceCtrl.getAllInvoices);
+router.get("/unit-invoices/:id", unitInvoiceCtrl.getInvoiceById);
+router.put("/unit-invoices/:id/approve", unitInvoiceCtrl.approveInvoice);
+router.put("/unit-invoices/:id/reject", unitInvoiceCtrl.rejectInvoice);
 module.exports = router;
