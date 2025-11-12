@@ -259,7 +259,6 @@ router.get("/unit-links", unitLinkCtrl.getLinks);
 router.delete("/unit-links/:id", unitLinkCtrl.deleteLink);
 router.get("/unit-links/linked/:unit_id", unitLinkCtrl.getLinkedUnits);
 
-
 // UNITLAR ORASIDA SO‘ROV YUBORISH
 router.post("/unit-requests/create", unitRequestCtrl.createRequest);
 

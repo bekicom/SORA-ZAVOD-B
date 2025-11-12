@@ -12,7 +12,9 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-/* 🚀 HTTP + SOCKET server */
+/* ===================================================
+   🚀 HTTP + SOCKET server
+=================================================== */
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -46,6 +48,12 @@ io.on("connection", (socket) => {
     console.log(`🏭 Unit ${unit_code} kanaliga qo‘shildi`);
   });
 
+  // === Admin2 kanaliga ulanish (asosiy ombor admini) ===
+  socket.on("join_admin2", () => {
+    socket.join("admin2_channel");
+    console.log(`🏢 Admin2 kanaliga qo‘shildi: ${socket.id}`);
+  });
+
   // === Uzilish holati ===
   socket.on("disconnect", () => {
     console.log("🔴 Socket uzildi:", socket.id);
@@ -56,8 +64,14 @@ io.on("connection", (socket) => {
    🌐 ROUTES (Socket so‘ngida chaqiriladi)
 =================================================== */
 global.io = io; // bu orqali controllerlarda ishlatamiz
+
+// Asosiy route
 const mainRoutes = require("./routes/mainRoutes");
 app.use("/api", mainRoutes);
+
+// 🆕 Admin2 uchun alohida route
+const admin2Routes = require("./routes/admin2Routes");
+app.use("/api/admin2", admin2Routes);
 
 /* ===================================================
    🧾 TEST ROUTE
@@ -97,5 +111,4 @@ connectDB().then(() => {
 /* ===================================================
    🌍 GLOBAL SOCKET EKSPORT
 =================================================== */
-
 module.exports = { io, server, app };
