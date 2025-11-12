@@ -17,7 +17,7 @@ const UnitRequestSchema = new mongoose.Schema(
     miqdor: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "received"], // ✅ YANGI qiymat qo‘shildi
       default: "pending",
     },
   },

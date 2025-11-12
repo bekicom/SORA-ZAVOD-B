@@ -265,6 +265,7 @@ router.post("/unit-requests/create", unitRequestCtrl.createRequest);
 
 // SO‘ROVNI TASDIQLASH (ombor tekshiruvi bilan)
 router.put("/unit-requests/:id/approve", unitRequestCtrl.approveRequest);
+router.put("/unit-requests/:id/receive", unitRequestCtrl.receiveRequest);
 
 // SO‘ROVNI RAD ETISH
 router.put("/unit-requests/:id/reject", unitRequestCtrl.rejectRequest);

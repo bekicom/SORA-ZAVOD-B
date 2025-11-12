@@ -118,12 +118,10 @@ exports.getLinkedUnits = async (req, res) => {
     const { unit_id } = req.params;
 
     if (!unit_id) {
-      return res
-        .status(400)
-        .json({ success: false, message: "unit_id kerak" });
+      return res.status(400).json({ success: false, message: "unit_id kerak" });
     }
 
-    // Bo‘limni topamiz
+    // 🔹 Asosiy bo‘limni topamiz
     const unit = await Unit.findById(unit_id);
     if (!unit) {
       return res
@@ -131,46 +129,65 @@ exports.getLinkedUnits = async (req, res) => {
         .json({ success: false, message: "Bo‘lim topilmadi" });
     }
 
-    // Bog‘langanlarni topamiz
+    // 🔹 Bog‘lanishlarni topamiz
     const links = await UnitLink.find({
       $or: [{ from_unit: unit_id }, { to_unit: unit_id }],
     })
-      .populate("from_unit", "nom turi")
-      .populate("to_unit", "nom turi");
+      .populate("from_unit", "nom turi unit_code kategoriyalar")
+      .populate("to_unit", "nom turi unit_code kategoriyalar");
 
     if (!links.length) {
       return res.json({
         success: true,
         message: "Bu bo‘lim hech kim bilan bog‘lanmagan",
-        unit: { id: unit._id, nom: unit.nom, turi: unit.turi },
+        unit: {
+          id: unit._id,
+          nom: unit.nom,
+          turi: unit.turi,
+          unit_code: unit.unit_code,
+        },
         connections: [],
       });
     }
 
-    // Formatlab chiqamiz
+    // 🔹 Formatlab chiqamiz
     const formatted = links.map((l) => {
-      // Agar bu unit "from_unit" bo‘lsa — u beruvchi
+      let linked;
+
+      // Agar bu unit beruvchi bo‘lsa
       if (l.from_unit._id.toString() === unit_id) {
+        linked = l.to_unit;
         return {
           id: l._id,
-          linked_unit_id: l.to_unit._id,
-          linked_unit_nom: l.to_unit.nom,
-          linked_unit_turi: l.to_unit.turi,
+          linked_unit_id: linked._id,
+          linked_unit_nom: linked.nom,
+          linked_unit_turi: linked.turi,
+          linked_unit_code: linked.unit_code,
           relationship: "Beruvchi (jo‘natuvchi)",
+          kategoriyalar: linked.kategoriyalar.map((k) => ({
+            id: k._id,
+            nom: k.nom,
+          })),
         };
-      }
-      // Agar bu unit "to_unit" bo‘lsa — u oluvchi
-      else {
+      } else {
+        // Aksincha — oluvchi
+        linked = l.from_unit;
         return {
           id: l._id,
-          linked_unit_id: l.from_unit._id,
-          linked_unit_nom: l.from_unit.nom,
-          linked_unit_turi: l.from_unit.turi,
+          linked_unit_id: linked._id,
+          linked_unit_nom: linked.nom,
+          linked_unit_turi: linked.turi,
+          linked_unit_code: linked.unit_code,
           relationship: "Qabul qiluvchi (oluvchi)",
+          kategoriyalar: linked.kategoriyalar.map((k) => ({
+            id: k._id,
+            nom: k.nom,
+          })),
         };
       }
     });
 
+    // 🔹 Javob
     res.json({
       success: true,
       message: `📋 ${unit.nom} bo‘limiga bog‘langan bo‘limlar`,
@@ -178,6 +195,7 @@ exports.getLinkedUnits = async (req, res) => {
         id: unit._id,
         nom: unit.nom,
         turi: unit.turi,
+        unit_code: unit.unit_code,
       },
       count: formatted.length,
       connections: formatted,
