@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-/* 🚀 SOCKET.IO Setup - ROUTELARDAN OLDIN! */
+/* 🚀 HTTP + SOCKET server */
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -22,34 +22,46 @@ const io = new Server(server, {
   },
 });
 
+/* ===================================================
+   🧠 SOCKET.IO ULANISH
+=================================================== */
 io.on("connection", (socket) => {
   console.log("🟢 Socket ulandi:", socket.id);
 
+  // === Admin kanaliga ulanish ===
   socket.on("join_admin", () => {
     socket.join("admins");
     console.log(`👨‍💼 Admin kanaliga qo'shildi: ${socket.id}`);
   });
 
+  // === Ombor kanaliga ulanish ===
   socket.on("join_warehouse", () => {
     socket.join("warehouse");
     console.log(`📦 Ombor kanaliga qo'shildi: ${socket.id}`);
   });
 
+  // === Unit kanaliga ulanish ===
+  socket.on("join_unit", (unit_code) => {
+    socket.join(`unit_${unit_code}`);
+    console.log(`🏭 Unit ${unit_code} kanaliga qo‘shildi`);
+  });
+
+  // === Uzilish holati ===
   socket.on("disconnect", () => {
     console.log("🔴 Socket uzildi:", socket.id);
   });
 });
 
-// ✅ IO ni global qilish - ROUTELARDAN OLDIN
-global.io = io;
-// yoki
-app.set("io", io);
-
-/* 🛣️ Routes - IO sozlangandan KEYIN */
+/* ===================================================
+   🌐 ROUTES (Socket so‘ngida chaqiriladi)
+=================================================== */
+global.io = io; // bu orqali controllerlarda ishlatamiz
 const mainRoutes = require("./routes/mainRoutes");
 app.use("/api", mainRoutes);
 
-/* 🧾 Test route */
+/* ===================================================
+   🧾 TEST ROUTE
+=================================================== */
 app.get("/", (req, res) => {
   res.json({
     status: true,
@@ -58,7 +70,9 @@ app.get("/", (req, res) => {
   });
 });
 
-/* ⚠️ Error handling */
+/* ===================================================
+   ⚠️ XATOLAR BILAN ISHLASH
+=================================================== */
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Sahifa topilmadi (404)" });
 });
@@ -68,7 +82,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Serverda ichki xatolik" });
 });
 
-/* 🚀 Server start */
+/* ===================================================
+   🚀 SERVERNI ISHGA TUSHURISH
+=================================================== */
 const PORT = process.env.PORT || 8060;
 
 connectDB().then(() => {
@@ -78,5 +94,8 @@ connectDB().then(() => {
   });
 });
 
-// Export ham qilamiz (agar kerak bo'lsa)
+/* ===================================================
+   🌍 GLOBAL SOCKET EKSPORT
+=================================================== */
+
 module.exports = { io, server, app };

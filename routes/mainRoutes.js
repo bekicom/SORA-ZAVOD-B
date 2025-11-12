@@ -9,6 +9,8 @@ const warehouseCtrl = require("../controllers/warehouseController");
 const warehouseOrderCtrl = require("../controllers/warehouseOrderController");
 const mainWarehouseCtrl = require("../controllers/mainWarehouseController");
 const unitInvoiceCtrl = require("../controllers/unitInvoiceController");
+const unitLinkCtrl = require("../controllers/unitLinkController");
+const unitRequestCtrl = require("../controllers/unitRequestController");
 
 // === Middlewarelar ===
 const { authenticate, authorize } = require("../middleware/auth");
@@ -250,4 +252,24 @@ router.get("/unit-invoices", unitInvoiceCtrl.getAllInvoices);
 router.get("/unit-invoices/:id", unitInvoiceCtrl.getInvoiceById);
 router.put("/unit-invoices/:id/approve", unitInvoiceCtrl.approveInvoice);
 router.put("/unit-invoices/:id/reject", unitInvoiceCtrl.rejectInvoice);
+
+// UNITLAR ORASIDA BOG‘LANISHLAR
+router.post("/unit-links/create", unitLinkCtrl.createLink);
+router.get("/unit-links", unitLinkCtrl.getLinks);
+router.delete("/unit-links/:id", unitLinkCtrl.deleteLink);
+router.get("/unit-links/linked/:unit_id", unitLinkCtrl.getLinkedUnits);
+
+
+// UNITLAR ORASIDA SO‘ROV YUBORISH
+router.post("/unit-requests/create", unitRequestCtrl.createRequest);
+
+// SO‘ROVNI TASDIQLASH (ombor tekshiruvi bilan)
+router.put("/unit-requests/:id/approve", unitRequestCtrl.approveRequest);
+
+// SO‘ROVNI RAD ETISH
+router.put("/unit-requests/:id/reject", unitRequestCtrl.rejectRequest);
+
+// KELGAN SO‘ROVLARNI KO‘RISH
+router.get("/unit-requests/to/:unit_code", unitRequestCtrl.getRequestsForUnit);
+
 module.exports = router;

@@ -300,3 +300,55 @@ exports.getUnitOmbor = async (req, res) => {
     res.status(500).json({ success: false, message: "Server xatolik", error });
   }
 };
+
+/* ===================================================
+   🔁 10️⃣ Unit uchun bog‘langan bo‘limlarni olish
+=================================================== */
+exports.getAvailableTargets = async (req, res) => {
+  try {
+    const { id } = req.params; // unit_id (masalan, biskivit bo‘lim)
+    const unit = await Unit.findById(id).populate(
+      "linked_units",
+      "nom unit_code kategoriyalar"
+    );
+
+    if (!unit) {
+      return res.status(404).json({
+        success: false,
+        message: "Bo‘lim topilmadi ❌",
+      });
+    }
+
+    if (!unit.linked_units || unit.linked_units.length === 0) {
+      return res.json({
+        success: true,
+        message: "Bu bo‘limga bog‘langan boshqa bo‘limlar yo‘q ❗",
+        data: [],
+      });
+    }
+
+    // Har bir bog‘langan bo‘lim ma’lumotlarini chiroyli formatda qaytaramiz
+    const formatted = unit.linked_units.map((linked) => ({
+      to_unit_code: linked.unit_code,
+      to_unit_nom: linked.nom,
+      kategoriyalar: linked.kategoriyalar.map((k) => ({
+        kategoriya_id: k._id,
+        kategoriya_nomi: k.nom,
+      })),
+    }));
+
+    res.json({
+      success: true,
+      message: "🔗 Bog‘langan bo‘limlar va ularning kategoriyalari",
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("getAvailableTargets error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server xatolik",
+      error: error.message,
+    });
+  }
+};
+
