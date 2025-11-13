@@ -47,7 +47,7 @@ exports.createInvoice = async (req, res) => {
 =================================================== */
 exports.getAllInvoices = async (req, res) => {
   try {
-    const invoices = await UnitInvoice.find()
+    const invoices = await UnitInvoice.find({ status: "pending" })
       .populate("unit_id", "nom turi")
       .sort({ createdAt: -1 });
 

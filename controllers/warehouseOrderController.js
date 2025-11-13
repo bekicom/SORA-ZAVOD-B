@@ -122,10 +122,29 @@ exports.approveOrder = async (req, res) => {
 };
 
 // 🔹 Barcha zakaslarni olish
+// 🔹 Zakaslarni status bo'yicha olish
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await WarehouseOrder.find().sort({ createdAt: -1 }).lean();
+    const { status } = req.query; // ?status=pending
 
+    const filter = {};
+    if (status) {
+      // faqat kiritilgan status bo‘yicha filtr
+      const validStatuses = ["pending", "approved", "sent", "completed"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Noto‘g‘ri status qiymati",
+        });
+      }
+      filter.status = status;
+    }
+
+    const orders = await WarehouseOrder.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Kategoriya nomini qo‘shamiz
     for (let o of orders) {
       const recipe = await Recipe.findOne({
         kategoriya_id: o.kategoriya_id,
@@ -133,9 +152,16 @@ exports.getOrders = async (req, res) => {
       o.kategoriya_nomi = recipe ? recipe.kategoriya_nomi : "Noma'lum";
     }
 
-    res.json({ success: true, count: orders.length, data: orders });
+    res.json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
   } catch (error) {
     console.error("❌ Zakaslarni olishda xatolik:", error);
-    res.status(500).json({ message: "Server xatolik", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Server xatolik", error: error.message });
   }
 };
+
