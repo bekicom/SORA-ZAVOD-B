@@ -15,8 +15,21 @@ const AdminSchema = new mongoose.Schema(
     },
     rol: {
       type: String,
-      default: "admin", // Har doim admin
-      immutable: true, // O‘zgartirib bo‘lmaydi
+      enum: ["admin", "omborchi"], // ✅ YANGI: ikkala rol
+      default: "admin",
+    },
+    ism: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    lavozim: {
+      type: String,
+      default: "",
+    },
+    status: {
+      type: Boolean,
+      default: true,
     },
     refreshToken: {
       type: String,

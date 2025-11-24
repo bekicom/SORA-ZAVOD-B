@@ -13,10 +13,15 @@ const unitLinkCtrl = require("../controllers/unitLinkController");
 const unitRequestCtrl = require("../controllers/unitRequestController");
 
 // === Middlewarelar ===
-const { authenticate, authorize } = require("../middleware/auth");
+const {
+  authenticate,
+  authorize,
+  adminOnly,
+  omborchiOnly,
+} = require("../middleware/auth");
 
 /* =======================================================
-   🔐 AUTH (ADMIN)
+   🔐 AUTH (ADMIN & OMBORCHI)
 ======================================================= */
 router.post("/auth/register", adminAuth.register);
 router.post("/auth/login", adminAuth.login);
@@ -24,252 +29,201 @@ router.post("/auth/refresh", adminAuth.refresh);
 router.post("/auth/logout", adminAuth.logout);
 
 /* =======================================================
-   🏭 UNITS (BO‘LIMLAR)
+   🏭 UNITS (BO'LIMLAR) - FAQAT ADMIN
 ======================================================= */
-router.post(
-  "/units/create",
-  authenticate,
-  authorize(["admin"]),
-  unitCtrl.createUnit
-);
-
-router.get("/units", authenticate, authorize(["admin"]), unitCtrl.getUnits);
-
-router.get(
-  "/units/:id",
-  authenticate,
-  authorize(["admin"]),
-  unitCtrl.getUnitById
-);
-
+router.post("/units/create", authenticate, adminOnly, unitCtrl.createUnit);
+router.get("/units", authenticate, adminOnly, unitCtrl.getUnits);
+router.get("/units/:id", authenticate, adminOnly, unitCtrl.getUnitById);
 router.post(
   "/units/:id/add-category",
   authenticate,
-  authorize(["admin"]),
+  adminOnly,
   unitCtrl.addCategory
 );
-
-router.delete(
-  "/units/:id",
-  authenticate,
-  authorize(["admin"]),
-  unitCtrl.deleteUnit
-);
-
-/* 🔍 Kategoriya va unga biriktirilgan tex kartani olish */
-if (unitCtrl.getCategoryWithRecipe) {
-  router.get(
-    "/units/:unit_id/category/:kategoriya_id",
-    authenticate,
-    authorize(["admin"]),
-    unitCtrl.getCategoryWithRecipe
-  );
-}
-
-/* 🔎 Unitni code orqali olish */
+router.delete("/units/:id", authenticate, adminOnly, unitCtrl.deleteUnit);
 router.get("/units/code/:code", unitCtrl.getUnitByCode);
 
-/* =======================================================
-   🧊 UNIT OMBORI (ICHKI OMBOR)
-======================================================= */
-
-// 🔹 Bo‘limdagi kategoriyalarni olish
-router.get(
-  "/units/:id/categories",
-  // authenticate,
-  // authorize(["admin", "unit"]),
-  unitCtrl.getUnitCategories
-);
-
-// 🔹 Bo‘lim ichki omboriga kirim qilish
-router.post(
-  "/units/:id/add-to-ombor",
-  // authenticate,
-  // authorize(["admin", "unit"]),
-  unitCtrl.addToUnitOmbor
-);
-
-// 🔹 Bo‘lim ichki omboridagi mahsulotlarni ko‘rish
-router.get(
-  "/units/:id/unit-ombor",
-  // authenticate,
-  // authorize(["admin", "unit"]),
-  unitCtrl.getUnitOmbor
-);
+// 🔹 Unit kategoriyalari (hammaga ochiq)
+router.get("/units/:id/categories", unitCtrl.getUnitCategories);
+router.post("/units/:id/add-to-ombor", unitCtrl.addToUnitOmbor);
+router.get("/units/:id/unit-ombor", unitCtrl.getUnitOmbor);
 
 /* =======================================================
-   📋 RECIPE (TEX KARTALAR)
+   📋 RECIPE (TEX KARTALAR) - FAQAT ADMIN
 ======================================================= */
-// ➕ Yaratish (kategoriya_id orqali)
 router.post(
   "/recipes/create",
   authenticate,
-  authorize(["admin"]),
+  adminOnly,
   recipeCtrl.createRecipe
 );
-
-// 📚 Barcha tex kartalarni olish
-router.get(
-  "/recipes",
-  authenticate,
-  authorize(["admin"]),
-  recipeCtrl.getRecipes
-);
-
-// 🔍 Bitta tex kartani ID bo‘yicha olish
-router.get(
-  "/recipes/:id",
-  authenticate,
-  authorize(["admin"]),
-  recipeCtrl.getRecipeById
-);
-
-// 🔎 Bo‘lim va kategoriya ID bo‘yicha mahsulotlarni olish
+router.get("/recipes", authenticate, adminOnly, recipeCtrl.getRecipes);
+router.get("/recipes/:id", authenticate, adminOnly, recipeCtrl.getRecipeById);
 router.get(
   "/recipes/:unit_id/:kategoriya_id",
   authenticate,
-  authorize(["admin"]),
+  adminOnly,
   recipeCtrl.getRecipeByCategory
 );
-
-// ✏️ Yangilash
-router.put(
-  "/recipes/:id",
-  authenticate,
-  authorize(["admin"]),
-  recipeCtrl.updateRecipe
-);
-
-// 🗑️ O‘chirish
-router.delete(
-  "/recipes/:id",
-  authenticate,
-  authorize(["admin"]),
-  recipeCtrl.deleteRecipe
-);
+router.put("/recipes/:id", authenticate, adminOnly, recipeCtrl.updateRecipe);
+router.delete("/recipes/:id", authenticate, adminOnly, recipeCtrl.deleteRecipe);
 
 /* =======================================================
-   🧺 OMBOR (WAREHOUSE)
+   🧺 OMBOR (WAREHOUSE) - FAQAT ADMIN
 ======================================================= */
-// 🏠 Xona yaratish
 router.post(
   "/warehouse/create",
   authenticate,
-  authorize(["admin"]),
+  adminOnly,
   warehouseCtrl.createRoom
 );
-
-// 📦 Barcha xonalar (chiqim/kirimsiz)
 router.get(
   "/warehouse",
   authenticate,
-  authorize(["admin"]),
+  authorize(["admin", "omborchi"]),
   warehouseCtrl.getRooms
 );
-
-// 🔍 Bitta xonani olish (chiqim/kirimsiz)
 router.get(
   "/warehouse/:id",
   authenticate,
-  authorize(["admin"]),
+  authorize(["admin", "omborchi"]),
   warehouseCtrl.getRoomById
 );
-
-// 📥 Kirim
 router.post(
   "/warehouse/:id/kirim",
   authenticate,
-  authorize(["admin"]),
+  authorize(["admin", "omborchi"]),
   warehouseCtrl.kirim
 );
-
-// 📤 Chiqim
 router.post(
   "/warehouse/:id/chiqim",
   authenticate,
-  authorize(["admin"]),
+  authorize(["admin", "omborchi"]),
   warehouseCtrl.chiqim
 );
-
-// 📜 Tarixlar
 router.get(
   "/warehouse/:id/kirimlar",
   authenticate,
-  authorize(["admin"]),
+  authorize(["admin", "omborchi"]),
   warehouseCtrl.getKirimlar
 );
-
 router.get(
   "/warehouse/:id/chiqimlar",
   authenticate,
-  authorize(["admin"]),
+  authorize(["admin", "omborchi"]),
   warehouseCtrl.getChiqimlar
 );
 
 /* =======================================================
    📦 OMBORGA ZAKAS (WAREHOUSE ORDERS)
 ======================================================= */
-// ➕ Yangi zakas yaratish
-router.post(
-  "/warehouse-orders/create",
-  warehouseOrderCtrl.createOrder // vaqtincha tokenni olib tashladik
-);
+// ➕ Unit tomonidan zakas yaratish (tokensiz)
+router.post("/warehouse-orders/create", warehouseOrderCtrl.createOrder);
 
-// 📋 Barcha zakaslarni olish
+// 📋 Admin: barcha zakaslarni ko'rish
 router.get(
   "/warehouse-orders",
   authenticate,
-  authorize(["admin"]),
+  adminOnly,
   warehouseOrderCtrl.getOrders
 );
 
-// ✅ Zakasni tasdiqlash (admin)
+// ✅ Admin: zakasni tasdiqlash
 router.put(
   "/warehouse-orders/:id/approve",
-
+  authenticate,
+  adminOnly,
   warehouseOrderCtrl.approveOrder
 );
 
-router.get(
-  "/main-warehouse",
-
-  mainWarehouseCtrl.getProducts
-);
+/* =======================================================
+   🏢 ASOSIY OMBOR (MAIN WAREHOUSE)
+======================================================= */
+router.get("/main-warehouse", mainWarehouseCtrl.getProducts);
 router.get(
   "/main-warehouse/unit/:unit_id/history",
   mainWarehouseCtrl.getUnitKirimHistory
 );
+router.get("/main-warehouse/admin-view", mainWarehouseCtrl.getAdminView);
 
-router.get(
-  "/main-warehouse/admin-view",
-
-  mainWarehouseCtrl.getAdminView
-);
-
-// 🧾 UNIT FAKTURALAR
 router.post("/unit-invoices/create", unitInvoiceCtrl.createInvoice);
 router.get("/unit-invoices", unitInvoiceCtrl.getAllInvoices);
 router.get("/unit-invoices/:id", unitInvoiceCtrl.getInvoiceById);
 router.put("/unit-invoices/:id/approve", unitInvoiceCtrl.approveInvoice);
 router.put("/unit-invoices/:id/reject", unitInvoiceCtrl.rejectInvoice);
 
-// UNITLAR ORASIDA BOG‘LANISHLAR
+/* =======================================================
+   🔗 UNITLAR ORASIDA BOG'LANISHLAR
+======================================================= */
 router.post("/unit-links/create", unitLinkCtrl.createLink);
 router.get("/unit-links", unitLinkCtrl.getLinks);
 router.delete("/unit-links/:id", unitLinkCtrl.deleteLink);
 router.get("/unit-links/linked/:unit_id", unitLinkCtrl.getLinkedUnits);
 
-// UNITLAR ORASIDA SO‘ROV YUBORISH
+/* =======================================================
+   📨 UNITLAR ORASIDA SO'ROV YUBORISH
+======================================================= */
 router.post("/unit-requests/create", unitRequestCtrl.createRequest);
-
-// SO‘ROVNI TASDIQLASH (ombor tekshiruvi bilan)
 router.put("/unit-requests/:id/approve", unitRequestCtrl.approveRequest);
 router.put("/unit-requests/:id/receive", unitRequestCtrl.receiveRequest);
-
-// SO‘ROVNI RAD ETISH
 router.put("/unit-requests/:id/reject", unitRequestCtrl.rejectRequest);
-
-// KELGAN SO‘ROVLARNI KO‘RISH
 router.get("/unit-requests/to/:unit_code", unitRequestCtrl.getRequestsForUnit);
+
+/* =======================================================
+   👨‍💼 OMBORCHI (SKLADCHI) ROUTE'LARI - YANGILANDI!
+======================================================= */
+// 📋 Tasdiqlangan zakaslarni ko'rish
+router.get(
+  "/skladchi/orders",
+  authenticate,
+  authorize(["admin", "omborchi"]),
+  warehouseOrderCtrl.getApprovedOrdersForSkladchi
+);
+
+// 🖨️ Chop etish uchun zakas ma'lumotlari
+router.get(
+  "/skladchi/orders/:id/print",
+  authenticate,
+  omborchiOnly,
+  warehouseOrderCtrl.getOrderForPrint
+);
+
+// ✅ OMBORCHI: Zakasni tasdiqlash (YANGI!)
+router.put(
+  "/skladchi/orders/:id/confirm",
+  authenticate,
+  omborchiOnly,
+  warehouseOrderCtrl.confirmOrder
+);
+
+/* =======================================================
+   🧪 TEST ROUTE'LARI
+======================================================= */
+// 🔐 Token test
+router.get("/test-auth", authenticate, (req, res) => {
+  res.json({
+    success: true,
+    message: "Token ishlayapti!",
+    user: req.user,
+  });
+});
+
+// 👨‍💼 Admin test
+router.get("/test-admin", authenticate, adminOnly, (req, res) => {
+  res.json({
+    success: true,
+    message: "Faqat admin kirishi mumkin!",
+    user: req.user,
+  });
+});
+
+// 📦 Omborchi test
+router.get("/test-omborchi", authenticate, omborchiOnly, (req, res) => {
+  res.json({
+    success: true,
+    message: "Faqat omborchi kirishi mumkin!",
+    user: req.user,
+  });
+});
 
 module.exports = router;

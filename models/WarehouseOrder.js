@@ -1,3 +1,4 @@
+// models/WarehouseOrder.js
 const mongoose = require("mongoose");
 
 const WarehouseOrderSchema = new mongoose.Schema(
@@ -13,22 +14,26 @@ const WarehouseOrderSchema = new mongoose.Schema(
       required: true,
     },
     kategoriya_nomi: { type: String },
-    quantity: { type: Number, required: true }, // nechta tayyor mahsulot uchun zakas
+    quantity: { type: Number, required: true },
     recipe_items: [
       {
-        nom: String, // ingredient nomi
-        birlik: String, // o‘lchov birligi (g, kg, l, ml ...)
-        bazaviy_miqdor: Number, // tex kartadagi miqdor
-        umumiy_miqdor: Number, // zakasga qarab hisoblangan miqdor
+        nom: String,
+        birlik: String,
+        bazaviy_miqdor: Number,
+        umumiy_miqdor: Number,
+        yigilgan_miqdor: { type: Number, default: 0 }, // ✅ YANGI: yig'ilgan miqdor
+        ombor_joylashuvi: { type: String, default: "" }, // ✅ YANGI: qaysi ombordan
       },
     ],
     requested_by: { type: String, required: true },
     status: {
       type: String,
-      enum: ["pending", "approved", "sent", "completed"],
+      enum: ["pending", "approved", "confirmed", "completed", "cancelled"], // ✅ YANGILANDI!
       default: "pending",
     },
     approved_by: { type: String },
+    collected_by: { type: String }, // ✅ YANGI: kim yig'di
+    completed_at: { type: Date }, // ✅ YANGI: yakunlangan vaqt
   },
   { timestamps: true }
 );
