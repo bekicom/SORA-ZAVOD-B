@@ -1,5 +1,8 @@
+// controllers/unitController.js
+const mongoose = require("mongoose");
 const Unit = require("../models/Unit");
-const Recipe = require("../models/Recipe");
+// const Recipe = require("../models/Recipe"); // hozir ishlatilmayapti
+const WarehouseOrder = require("../models/WarehouseOrder");
 
 /* ===================================================
    🏗️ 1️⃣ Yangi Unit (bo‘lim) yaratish
@@ -8,7 +11,7 @@ exports.createUnit = async (req, res) => {
   try {
     const { nom, turi, qavat } = req.body;
 
-    if (!nom || !turi || !qavat) {
+    if (!nom || !turi || qavat == null) {
       return res.status(400).json({
         success: false,
         message: "nom, turi va qavat kiritilishi shart",
@@ -22,14 +25,15 @@ exports.createUnit = async (req, res) => {
       });
     }
 
-    if (![2, 3].includes(Number(qavat))) {
+    const qavatNum = Number(qavat);
+    if (![2, 3].includes(qavatNum)) {
       return res.status(400).json({
         success: false,
         message: "Qavat faqat 2 yoki 3 bo‘lishi mumkin",
       });
     }
 
-    const unit = new Unit({ nom, turi, qavat });
+    const unit = new Unit({ nom: nom.trim(), turi, qavat: qavatNum });
     await unit.save();
 
     res.status(201).json({
@@ -54,7 +58,7 @@ exports.createUnit = async (req, res) => {
 =================================================== */
 exports.getUnits = async (req, res) => {
   try {
-    const units = await Unit.find();
+    const units = await Unit.find().lean();
     res.json({
       success: true,
       count: units.length,
@@ -71,7 +75,16 @@ exports.getUnits = async (req, res) => {
 =================================================== */
 exports.getUnitById = async (req, res) => {
   try {
-    const unit = await Unit.findById(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
+    }
+
+    const unit = await Unit.findById(id);
     if (!unit) {
       return res
         .status(404)
@@ -85,7 +98,7 @@ exports.getUnitById = async (req, res) => {
 };
 
 /* ===================================================
-   🔎 4️⃣ Bo‘limni unit_code orqali olish (YAKUNIY)
+   🔎 4️⃣ Bo‘limni unit_code orqali olish
 =================================================== */
 exports.getUnitByCode = async (req, res) => {
   try {
@@ -132,6 +145,7 @@ exports.getUnitByCode = async (req, res) => {
 exports.addCategory = async (req, res) => {
   try {
     const { kategoriya } = req.body;
+    const { id } = req.params;
 
     if (!kategoriya || typeof kategoriya !== "string") {
       return res.status(400).json({
@@ -141,14 +155,23 @@ exports.addCategory = async (req, res) => {
       });
     }
 
-    const unit = await Unit.findById(req.params.id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
+    }
+
+    const unit = await Unit.findById(id);
     if (!unit)
       return res
         .status(404)
         .json({ success: false, message: "Bo‘lim topilmadi" });
 
-    const exists = unit.kategoriyalar.find(
-      (cat) => cat.nom.toLowerCase() === kategoriya.toLowerCase()
+    const cleanName = kategoriya.trim();
+
+    const exists = (unit.kategoriyalar || []).find(
+      (cat) => cat.nom.toLowerCase() === cleanName.toLowerCase()
     );
 
     if (exists) {
@@ -158,7 +181,7 @@ exports.addCategory = async (req, res) => {
       });
     }
 
-    unit.kategoriyalar.push({ nom: kategoriya.trim() });
+    unit.kategoriyalar.push({ nom: cleanName });
     await unit.save();
 
     res.json({
@@ -177,7 +200,16 @@ exports.addCategory = async (req, res) => {
 =================================================== */
 exports.deleteUnit = async (req, res) => {
   try {
-    const unit = await Unit.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
+    }
+
+    const unit = await Unit.findByIdAndDelete(id);
     if (!unit) {
       return res
         .status(404)
@@ -196,6 +228,14 @@ exports.deleteUnit = async (req, res) => {
 exports.getUnitCategories = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
+    }
+
     const unit = await Unit.findById(id);
 
     if (!unit) {
@@ -207,11 +247,11 @@ exports.getUnitCategories = async (req, res) => {
     res.json({
       success: true,
       message: "Bo‘lim kategoriyalari",
-      data: unit.kategoriyalar,
+      data: unit.kategoriyalar || [],
     });
   } catch (error) {
     console.error("getUnitCategories error:", error);
-    res.status(500).json({ success: false, message: "Server xatolik", error });
+    res.status(500).json({ success: false, message: "Server xatolik" });
   }
 };
 
@@ -221,7 +261,26 @@ exports.getUnitCategories = async (req, res) => {
 exports.addToUnitOmbor = async (req, res) => {
   try {
     const { id } = req.params; // unit id
-    const { kategoriya_id, miqdor, saqlanadigan_joy } = req.body;
+    const { kategoriya_id, miqdor, saqlanadigan_joy, birlik } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Unit ID noto‘g‘ri" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(kategoriya_id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Kategoriya ID noto‘g‘ri" });
+    }
+
+    const qty = Number(miqdor);
+    if (Number.isNaN(qty) || qty <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "miqdor musbat son bo‘lishi kerak",
+      });
+    }
 
     const unit = await Unit.findById(id);
     if (!unit) {
@@ -231,8 +290,8 @@ exports.addToUnitOmbor = async (req, res) => {
     }
 
     // 🔍 Kategoriya nomini unit ichidan topamiz
-    const kategoriya = unit.kategoriyalar.find(
-      (k) => k._id.toString() === kategoriya_id
+    const kategoriya = (unit.kategoriyalar || []).find(
+      (k) => k._id.toString() === kategoriya_id.toString()
     );
 
     if (!kategoriya) {
@@ -245,16 +304,19 @@ exports.addToUnitOmbor = async (req, res) => {
 
     // 🔍 Omborda shu mahsulot bormi?
     const existing = unit.unit_ombor.find(
-      (item) => item.kategoriya_id.toString() === kategoriya_id
+      (item) => item.kategoriya_id.toString() === kategoriya_id.toString()
     );
 
     if (existing) {
-      existing.miqdor += Number(miqdor);
+      existing.miqdor += qty;
+      if (birlik) existing.birlik = birlik;
+      if (saqlanadigan_joy) existing.saqlanadigan_joy = saqlanadigan_joy;
     } else {
       unit.unit_ombor.push({
         kategoriya_id,
         kategoriya_nomi: kategoriya.nom,
-        miqdor: Number(miqdor),
+        miqdor: qty,
+        birlik: birlik || "dona",
         saqlanadigan_joy: saqlanadigan_joy || "haladenik",
       });
     }
@@ -282,6 +344,13 @@ exports.addToUnitOmbor = async (req, res) => {
 exports.getUnitOmbor = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Unit ID noto‘g‘ri" });
+    }
+
     const unit = await Unit.findById(id);
 
     if (!unit) {
@@ -297,16 +366,26 @@ exports.getUnitOmbor = async (req, res) => {
     });
   } catch (error) {
     console.error("getUnitOmbor error:", error);
-    res.status(500).json({ success: false, message: "Server xatolik", error });
+    res.status(500).json({ success: false, message: "Server xatolik" });
   }
 };
 
 /* ===================================================
    🔁 10️⃣ Unit uchun bog‘langan bo‘limlarni olish
+   Eslatma: Unit modelingizda linked_units bo‘lmasa,
+   bu funksiya bo‘sh qaytadi.
 =================================================== */
 exports.getAvailableTargets = async (req, res) => {
   try {
-    const { id } = req.params; // unit_id (masalan, biskivit bo‘lim)
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Unit ID noto‘g‘ri" });
+    }
+
+    // linked_units bo‘lsa populate qiladi, bo‘lmasa oddiy find
     const unit = await Unit.findById(id).populate(
       "linked_units",
       "nom unit_code kategoriyalar"
@@ -327,11 +406,10 @@ exports.getAvailableTargets = async (req, res) => {
       });
     }
 
-    // Har bir bog‘langan bo‘lim ma’lumotlarini chiroyli formatda qaytaramiz
     const formatted = unit.linked_units.map((linked) => ({
       to_unit_code: linked.unit_code,
       to_unit_nom: linked.nom,
-      kategoriyalar: linked.kategoriyalar.map((k) => ({
+      kategoriyalar: (linked.kategoriyalar || []).map((k) => ({
         kategoriya_id: k._id,
         kategoriya_nomi: k.nom,
       })),
@@ -352,4 +430,152 @@ exports.getAvailableTargets = async (req, res) => {
   }
 };
 
+exports.getIncomingOrdersForUnit = async (req, res) => {
+  try {
+    const { id } = req.params; // unit_id
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
+    }
+
+    const orders = await WarehouseOrder.find({
+      unit_id: id,
+      status: { $in: ["completed", "confirmed"] },
+      $or: [{ unit_received: { $exists: false } }, { unit_received: false }],
+    })
+      .sort({ completed_at: -1, createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      message: "Unitga kelgan tayyor zakaslar",
+      count: orders.length,
+      data: orders,
+    });
+  } catch (error) {
+    console.error("getIncomingOrdersForUnit error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server xatolik",
+      error: error.message,
+    });
+  }
+};
+
+/* ===================================================
+   ✅ 12️⃣ Unit zakasni qabul qilish (receive)
+   - tayyor mahsulot unit omboriga kirim bo‘ladi
+=================================================== */
+exports.confirmOrderReceivedByUnit = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+    const { unit_id, received_by, saqlanadigan_joy } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(order_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID noto‘g‘ri",
+      });
+    }
+    if (!mongoose.Types.ObjectId.isValid(unit_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
+    }
+
+    const order = await WarehouseOrder.findById(order_id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Zakas topilmadi",
+      });
+    }
+
+    if (order.unit_id.toString() !== unit_id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Bu zakas sizga tegishli emas",
+      });
+    }
+
+    if (order.status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Faqat completed zakasni qabul qilish mumkin",
+      });
+    }
+
+    if (order.unit_received) {
+      return res.status(400).json({
+        success: false,
+        message: "Zakas allaqachon qabul qilingan",
+      });
+    }
+
+    const unit = await Unit.findById(unit_id);
+    if (!unit) {
+      return res.status(404).json({
+        success: false,
+        message: "Unit topilmadi",
+      });
+    }
+
+    // ✅ Tayyor mahsulotni unit_ombor ga kirim qilamiz
+    const qty = Number(order.quantity);
+    if (Number.isNaN(qty) || qty <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Zakas quantity noto‘g‘ri",
+      });
+    }
+
+    if (!unit.unit_ombor) unit.unit_ombor = [];
+
+    const existing = unit.unit_ombor.find(
+      (i) => i.kategoriya_id.toString() === order.kategoriya_id.toString()
+    );
+
+    if (existing) {
+      existing.miqdor += qty;
+    } else {
+      unit.unit_ombor.push({
+        kategoriya_id: order.kategoriya_id,
+        kategoriya_nomi: order.kategoriya_nomi,
+        miqdor: qty,
+        birlik: "dona",
+        saqlanadigan_joy: saqlanadigan_joy || "haladenik",
+      });
+    }
+
+    await unit.save();
+
+    // ✅ Orderni "received" flag bilan yopamiz
+    order.unit_received = true;
+    order.received_by = received_by || "Unit";
+    order.received_at = new Date();
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "✅ Zakas qabul qilindi va unit omboriga kirim bo‘ldi",
+      data: {
+        order_id: order._id,
+        unit_received: order.unit_received,
+        received_by: order.received_by,
+        received_at: order.received_at,
+        unit_ombor: unit.unit_ombor,
+      },
+    });
+  } catch (error) {
+    console.error("confirmOrderReceivedByUnit error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server xatolik",
+      error: error.message,
+    });
+  }
+};

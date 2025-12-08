@@ -127,3 +127,106 @@ exports.getAdminView = async (req, res) => {
     });
   }
 };
+
+/* ==========================================================
+   ➖ 4️⃣ Asosiy ombordan mahsulotni NOMI va MIQDORI bo‘yicha minus qilish
+========================================================== */
+/**
+ * POST /api/main-warehouse/minus
+ *
+ * Body (JSON):
+ * {
+ *   "kategoriya_nomi": "olma",
+ *   "miqdor": 30,
+ *   "reason": "Dokondan kelgan zakas #123"
+ * }
+ */
+/* ==========================================================
+   🔻 MAIN OMBORDAN BIR NECHA MAHSULOTNI BIRGALIKDA MINUS QILISH
+========================================================== */
+exports.minusFromMainWarehouse = async (req, res) => {
+  try {
+    const { items, reason } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "items array bo‘lishi shart"
+      });
+    }
+
+    const results = [];
+
+    for (const item of items) {
+      const { kategoriya_nomi, miqdor } = item;
+
+      if (!kategoriya_nomi || !miqdor || miqdor <= 0) {
+        results.push({
+          kategoriya_nomi,
+          status: "error",
+          message: "Nomi yoki miqdori noto‘g‘ri"
+        });
+        continue;
+      }
+
+      // Omborda mahsulotni topamiz
+      const product = await MainWarehouse.findOne({
+        kategoriya_nomi
+      });
+
+      if (!product) {
+        results.push({
+          kategoriya_nomi,
+          status: "error",
+          message: "Asosiy omborda topilmadi"
+        });
+        continue;
+      }
+
+      if (product.miqdor < miqdor) {
+        results.push({
+          kategoriya_nomi,
+          status: "error",
+          message: `Yetarli emas. Omborda: ${product.miqdor}`
+        });
+        continue;
+      }
+
+      // Minus qilamiz
+      product.miqdor -= miqdor;
+
+      // Chiqim tarixiga yozamiz
+      if (!Array.isArray(product.chiqim_tarix)) {
+        product.chiqim_tarix = [];
+      }
+
+      product.chiqim_tarix.push({
+        miqdor,
+        sana: new Date(),
+        izoh: reason || "Zakas asosida minus"
+      });
+
+      await product.save();
+
+      results.push({
+        kategoriya_nomi,
+        miqdor,
+        status: "success"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Minus jarayoni tugadi",
+      results
+    });
+
+  } catch (error) {
+    console.error("minusFromMainWarehouse error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server xatosi",
+      error: error.message
+    });
+  }
+};

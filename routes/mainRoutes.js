@@ -32,7 +32,7 @@ router.post("/auth/logout", adminAuth.logout);
    🏭 UNITS (BO'LIMLAR) - FAQAT ADMIN
 ======================================================= */
 router.post("/units/create", authenticate, adminOnly, unitCtrl.createUnit);
-router.get("/units", authenticate, adminOnly, unitCtrl.getUnits);
+router.get("/units", unitCtrl.getUnits);
 router.get("/units/:id", authenticate, adminOnly, unitCtrl.getUnitById);
 router.post(
   "/units/:id/add-category",
@@ -146,6 +146,14 @@ router.get(
 );
 router.get("/main-warehouse/admin-view", mainWarehouseCtrl.getAdminView);
 
+// 🔻 YANGI: Asosiy ombordan mahsulotni minus qilish
+// POST /api/main-warehouse/minus
+router.post(
+  "/main-warehouse/minus",
+
+  mainWarehouseCtrl.minusFromMainWarehouse
+);
+
 router.post("/unit-invoices/create", unitInvoiceCtrl.createInvoice);
 router.get("/unit-invoices", unitInvoiceCtrl.getAllInvoices);
 router.get("/unit-invoices/:id", unitInvoiceCtrl.getInvoiceById);
@@ -168,7 +176,17 @@ router.put("/unit-requests/:id/approve", unitRequestCtrl.approveRequest);
 router.put("/unit-requests/:id/receive", unitRequestCtrl.receiveRequest);
 router.put("/unit-requests/:id/reject", unitRequestCtrl.rejectRequest);
 router.get("/unit-requests/to/:unit_code", unitRequestCtrl.getRequestsForUnit);
+router.get(
+  "/units/:id/incoming-orders",
+  authenticate, // unit xodimi token bilan kiradi
+  authorize(["admin", "omborchi", "unit"]), // sizda unit role bo'lsa qo'shiladi
+  unitCtrl.getIncomingOrdersForUnit
+);
 
+router.put(
+  "/units/orders/:order_id/receive",
+  unitCtrl.confirmOrderReceivedByUnit
+);
 /* =======================================================
    👨‍💼 OMBORCHI (SKLADCHI) ROUTE'LARI - YANGILANDI!
 ======================================================= */

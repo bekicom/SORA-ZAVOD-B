@@ -15,27 +15,46 @@ const WarehouseOrderSchema = new mongoose.Schema(
     },
     kategoriya_nomi: { type: String },
     quantity: { type: Number, required: true },
+
     recipe_items: [
       {
         nom: String,
         birlik: String,
         bazaviy_miqdor: Number,
         umumiy_miqdor: Number,
-        yigilgan_miqdor: { type: Number, default: 0 }, // ✅ YANGI: yig'ilgan miqdor
-        ombor_joylashuvi: { type: String, default: "" }, // ✅ YANGI: qaysi ombordan
+        yigilgan_miqdor: { type: Number, default: 0 },
+        ombor_joylashuvi: { type: String, default: "" },
       },
     ],
+
     requested_by: { type: String, required: true },
+
     status: {
       type: String,
-      enum: ["pending", "approved", "confirmed", "completed", "cancelled"], // ✅ YANGILANDI!
+      enum: ["pending", "approved", "confirmed", "completed", "cancelled"],
       default: "pending",
     },
+
     approved_by: { type: String },
-    collected_by: { type: String }, // ✅ YANGI: kim yig'di
-    completed_at: { type: Date }, // ✅ YANGI: yakunlangan vaqt
+    collected_by: { type: String },
+    completed_at: { type: Date },
+
+    // 🆕 Unit tomonidan qabul qilinganligini belgilash
+    unit_received: {
+      type: Boolean,
+      default: false,
+    },
+    received_by: {
+      type: String,
+      default: null,
+    },
+    received_at: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
 
 module.exports = mongoose.model("WarehouseOrder", WarehouseOrderSchema);
