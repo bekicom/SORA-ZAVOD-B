@@ -11,6 +11,7 @@ const mainWarehouseCtrl = require("../controllers/mainWarehouseController");
 const unitInvoiceCtrl = require("../controllers/unitInvoiceController");
 const unitLinkCtrl = require("../controllers/unitLinkController");
 const unitRequestCtrl = require("../controllers/unitRequestController");
+const employeeCtrl = require("../controllers/employee.controller");
 
 // === Middlewarelar ===
 const {
@@ -124,7 +125,6 @@ router.post("/warehouse-orders/create", warehouseOrderCtrl.createOrder);
 router.get(
   "/warehouse-orders",
   authenticate,
-  adminOnly,
   warehouseOrderCtrl.getOrders
 );
 
@@ -132,7 +132,6 @@ router.get(
 router.put(
   "/warehouse-orders/:id/approve",
   authenticate,
-  adminOnly,
   warehouseOrderCtrl.approveOrder
 );
 
@@ -243,5 +242,43 @@ router.get("/test-omborchi", authenticate, omborchiOnly, (req, res) => {
     user: req.user,
   });
 });
+
+// ➕ Hodim qo'shish (Admin)
+router.post(
+  "/employees/create",
+  authenticate,
+  adminOnly,
+  employeeCtrl.createEmployee
+);
+
+// 📋 Barcha hodimlar
+router.get(
+  "/employees",
+  authenticate,
+  authorize(["admin", "omborchi"]),
+  employeeCtrl.getEmployees
+);
+
+// 📄 Bitta hodim
+router.get(
+  "/employees/:id",
+  authenticate,
+  authorize(["admin", "omborchi"]),
+  employeeCtrl.getEmployeeById
+);
+
+// ✏️ Hodimni yangilash
+router.put(
+  "/employees/:id",
+  authenticate,
+  employeeCtrl.updateEmployee
+);
+
+// ❌ Hodimni o'chirish
+router.delete(
+  "/employees/:id",
+  authenticate,
+  employeeCtrl.deleteEmployee
+);
 
 module.exports = router;
