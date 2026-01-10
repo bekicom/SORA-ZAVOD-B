@@ -109,7 +109,6 @@ app.use("/api", mainRoutes);
 // 🆕 Admin2 uchun alohida route
 const admin2Routes = require("./routes/admin2Routes");
 app.use("/api/admin2", admin2Routes);
-
 /* ===================================================
    🧾 TEST ROUTE
 =================================================== */

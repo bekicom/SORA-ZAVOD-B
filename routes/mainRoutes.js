@@ -20,6 +20,10 @@ const {
   adminOnly,
   omborchiOnly,
 } = require("../middleware/auth");
+router.get(
+  "/public/warehouse/products/names",
+  warehouseCtrl.getAllProductNames
+);
 
 /* =======================================================
    🔐 AUTH (ADMIN & OMBORCHI)
@@ -119,6 +123,8 @@ router.get(
   authorize(["admin", "omborchi"]),
   warehouseCtrl.getChiqimlar
 );
+
+
 
 /* =======================================================
    📦 OMBORGA ZAKAS (WAREHOUSE ORDERS)
@@ -274,9 +280,6 @@ router.put("/employees/:id", authenticate, employeeCtrl.updateEmployee);
 // ❌ Hodimni o'chirish
 router.delete("/employees/:id", authenticate, employeeCtrl.deleteEmployee);
 
-router.get(
-  "/warehouse/products/names",
-  warehouseCtrl.getAllProductNames // ✅ TO‘G‘RI
-);
+
 
 module.exports = router;
