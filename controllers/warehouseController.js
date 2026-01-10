@@ -119,56 +119,73 @@ exports.kirim = async (req, res) => {
 /* 📤 Chiqim */
 exports.chiqim = async (req, res) => {
   try {
-    const { mahsulot, miqdor, izoh } = req.body;
+    const { mahsulot, miqdor, birlik, izoh } = req.body;
 
     if (!mahsulot || !miqdor)
-      return res
-        .status(400)
-        .json({ success: false, message: "Mahsulot nomi va miqdori shart" });
+      return res.status(400).json({
+        success: false,
+        message: "Mahsulot nomi va miqdori shart",
+      });
 
     const room = await WarehouseRoom.findById(req.params.id);
     if (!room)
-      return res
-        .status(404)
-        .json({ success: false, message: "Xona topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Xona topilmadi",
+      });
 
     const existing = room.mahsulotlar.find((m) => m.nom === mahsulot);
     if (!existing)
-      return res
-        .status(404)
-        .json({ success: false, message: "Mahsulot topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Mahsulot topilmadi",
+      });
 
     if (existing.miqdor < miqdor)
       return res.status(400).json({
         success: false,
-        message: `Omborda yetarli ${mahsulot} mavjud emas (${existing.miqdor} dona qoldi)`,
+        message: `Omborda yetarli ${mahsulot} mavjud emas (${existing.miqdor} ${
+          existing.birlik || "dona"
+        } qoldi)`,
       });
 
+    // 🔻 MIQDOR AYIRAMIZ
     existing.miqdor -= miqdor;
     existing.oxirgi_ozgarish = new Date();
 
+    const usedUnit = birlik || existing.birlik || "dona";
+
+    // 📦 CHIQIM TARIXIGA YOZAMIZ
     room.chiqimlar.push({
       mahsulot,
       miqdor,
+      birlik: usedUnit,
       izoh: izoh || "Ishlab chiqarish uchun chiqim",
       sana: new Date(),
     });
 
     await room.save();
 
+    // ✅ RESPONSE
     res.json({
       success: true,
-      message: `${mahsulot} uchun ${miqdor} dona chiqim qilindi ✅`,
+      message: `${mahsulot} uchun ${miqdor} ${usedUnit} chiqim qilindi ✅`,
       data: {
         xona: room.nom,
         mahsulot,
+        miqdor,
+        birlik: usedUnit,
         qolgan_miqdor: existing.miqdor,
+        qolgan_birlik: existing.birlik || usedUnit,
         izoh: izoh || "Ishlab chiqarish uchun chiqim",
       },
     });
   } catch (err) {
     console.error("chiqim error:", err);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    res.status(500).json({
+      success: false,
+      message: "Server xatosi",
+    });
   }
 };
 
@@ -209,5 +226,36 @@ exports.getKirimlar = async (req, res) => {
   } catch (err) {
     console.error("getKirimlar error:", err);
     res.status(500).json({ success: false, message: "Server xatosi" });
+  }
+};
+
+/* 📦 Ombordagi barcha mahsulot nomlarini olish (unique) */
+exports.getAllProductNames = async (req, res) => {
+  try {
+    const rooms = await WarehouseRoom.find({}, "mahsulotlar.nom");
+
+    const productSet = new Set();
+
+    rooms.forEach((room) => {
+      room.mahsulotlar.forEach((m) => {
+        if (m.nom) {
+          productSet.add(m.nom);
+        }
+      });
+    });
+
+    const products = Array.from(productSet);
+
+    res.json({
+      success: true,
+      count: products.length,
+      data: products,
+    });
+  } catch (err) {
+    console.error("getAllProductNames error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server xatosi",
+    });
   }
 };

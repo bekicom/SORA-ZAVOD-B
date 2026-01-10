@@ -156,18 +156,32 @@ exports.deleteRecipe = async (req, res) => {
 /* ===================================================
    ✏️ 6️⃣ Tex kartani yangilash
 =================================================== */
-exports.updateRecipe = async (req, res) => {
+exports.updateRecipeByCategory = async (req, res) => {
   try {
-    const { mahsulotlar, umumiy_hajm } = req.body;
+    const { unit_id, kategoriya_id, mahsulotlar, umumiy_hajm } = req.body;
 
-    const recipe = await Recipe.findById(req.params.id);
-    if (!recipe)
-      return res
-        .status(404)
-        .json({ success: false, message: "Tex karta topilmadi" });
+    if (!unit_id || !kategoriya_id) {
+      return res.status(400).json({
+        success: false,
+        message: "unit_id va kategoriya_id shart",
+      });
+    }
 
-    if (mahsulotlar) recipe.mahsulotlar = mahsulotlar;
-    if (umumiy_hajm) recipe.umumiy_hajm = umumiy_hajm;
+    const recipe = await Recipe.findOne({ unit_id, kategoriya_id });
+    if (!recipe) {
+      return res.status(404).json({
+        success: false,
+        message: "Tex karta topilmadi",
+      });
+    }
+
+    if (Array.isArray(mahsulotlar) && mahsulotlar.length > 0) {
+      recipe.mahsulotlar = mahsulotlar;
+    }
+
+    if (umumiy_hajm !== undefined) {
+      recipe.umumiy_hajm = Number(umumiy_hajm);
+    }
 
     await recipe.save();
 
@@ -177,7 +191,10 @@ exports.updateRecipe = async (req, res) => {
       data: recipe,
     });
   } catch (err) {
-    console.error("updateRecipe error:", err);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    console.error("updateRecipeByCategory error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server xatosi",
+    });
   }
 };

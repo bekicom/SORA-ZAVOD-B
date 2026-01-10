@@ -66,7 +66,12 @@ router.get(
   adminOnly,
   recipeCtrl.getRecipeByCategory
 );
-router.put("/recipes/:id", authenticate, adminOnly, recipeCtrl.updateRecipe);
+router.put(
+  "/recipes/:id",
+  authenticate,
+  adminOnly,
+  recipeCtrl.updateRecipeByCategory
+);
 router.delete("/recipes/:id", authenticate, adminOnly, recipeCtrl.deleteRecipe);
 
 /* =======================================================
@@ -122,11 +127,7 @@ router.get(
 router.post("/warehouse-orders/create", warehouseOrderCtrl.createOrder);
 
 // 📋 Admin: barcha zakaslarni ko'rish
-router.get(
-  "/warehouse-orders",
-  authenticate,
-  warehouseOrderCtrl.getOrders
-);
+router.get("/warehouse-orders", authenticate, warehouseOrderCtrl.getOrders);
 
 // ✅ Admin: zakasni tasdiqlash
 router.put(
@@ -268,17 +269,14 @@ router.get(
 );
 
 // ✏️ Hodimni yangilash
-router.put(
-  "/employees/:id",
-  authenticate,
-  employeeCtrl.updateEmployee
-);
+router.put("/employees/:id", authenticate, employeeCtrl.updateEmployee);
 
 // ❌ Hodimni o'chirish
-router.delete(
-  "/employees/:id",
-  authenticate,
-  employeeCtrl.deleteEmployee
+router.delete("/employees/:id", authenticate, employeeCtrl.deleteEmployee);
+
+router.get(
+  "/warehouse/products/names",
+  warehouseCtrl.getAllProductNames // ✅ TO‘G‘RI
 );
 
 module.exports = router;
