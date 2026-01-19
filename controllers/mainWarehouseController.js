@@ -58,7 +58,7 @@ exports.getUnitKirimHistory = async (req, res) => {
         miqdor: kirim.miqdor,
         kiritgan: kirim.kiritgan,
         sana: new Date(kirim.sana).toLocaleString("uz-UZ"),
-      }))
+      })),
     );
 
     // 🔹 JSON javob
@@ -151,59 +151,60 @@ exports.minusFromMainWarehouse = async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "items array bo‘lishi shart"
+        message: "items array bo‘lishi shart",
       });
     }
 
-    const results = [];
+    /* =========================
+       1️⃣ HAMMASINI TEKSHIRISH
+    ========================= */
+    const productsMap = new Map();
 
     for (const item of items) {
       const { kategoriya_nomi, miqdor } = item;
 
       if (!kategoriya_nomi || !miqdor || miqdor <= 0) {
-        results.push({
-          kategoriya_nomi,
-          status: "error",
-          message: "Nomi yoki miqdori noto‘g‘ri"
+        return res.status(400).json({
+          success: false,
+          message: "Mahsulot nomi yoki miqdori noto‘g‘ri",
         });
-        continue;
       }
 
-      // Omborda mahsulotni topamiz
-      const product = await MainWarehouse.findOne({
-        kategoriya_nomi
-      });
+      const product = await MainWarehouse.findOne({ kategoriya_nomi });
 
       if (!product) {
-        results.push({
-          kategoriya_nomi,
-          status: "error",
-          message: "Asosiy omborda topilmadi"
+        return res.status(404).json({
+          success: false,
+          message: `Mahsulot topilmadi: ${kategoriya_nomi}`,
         });
-        continue;
       }
 
       if (product.miqdor < miqdor) {
-        results.push({
-          kategoriya_nomi,
-          status: "error",
-          message: `Yetarli emas. Omborda: ${product.miqdor}`
+        return res.status(400).json({
+          success: false,
+          message: `Yetarli emas: ${kategoriya_nomi} (omborda ${product.miqdor})`,
         });
-        continue;
       }
 
-      // Minus qilamiz
+      productsMap.set(kategoriya_nomi, product);
+    }
+
+    /* =========================
+       2️⃣ HAMMASINI MINUS QILISH
+    ========================= */
+    const results = [];
+
+    for (const item of items) {
+      const { kategoriya_nomi, miqdor } = item;
+      const product = productsMap.get(kategoriya_nomi);
+
       product.miqdor -= miqdor;
 
-      // Chiqim tarixiga yozamiz
-      if (!Array.isArray(product.chiqim_tarix)) {
-        product.chiqim_tarix = [];
-      }
-
+      product.chiqim_tarix = product.chiqim_tarix || [];
       product.chiqim_tarix.push({
         miqdor,
         sana: new Date(),
-        izoh: reason || "Zakas asosida minus"
+        izoh: reason || "Zakas asosida minus",
       });
 
       await product.save();
@@ -211,22 +212,23 @@ exports.minusFromMainWarehouse = async (req, res) => {
       results.push({
         kategoriya_nomi,
         miqdor,
-        status: "success"
+        qolgan: product.miqdor,
+        status: "success",
       });
     }
 
     return res.json({
       success: true,
-      message: "Minus jarayoni tugadi",
-      results
+      message: "Zakas bo‘yicha ombordan muvaffaqiyatli chiqarildi ✅",
+      results,
     });
-
   } catch (error) {
     console.error("minusFromMainWarehouse error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server xatosi",
-      error: error.message
+      error: error.message,
     });
   }
 };

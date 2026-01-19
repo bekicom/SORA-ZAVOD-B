@@ -13,6 +13,8 @@ const unitLinkCtrl = require("../controllers/unitLinkController");
 const unitRequestCtrl = require("../controllers/unitRequestController");
 const employeeCtrl = require("../controllers/employee.controller");
 
+
+
 // === Middlewarelar ===
 const {
   authenticate,
@@ -272,5 +274,10 @@ router.put("/employees/:id", authenticate, employeeCtrl.updateEmployee);
 
 // ❌ Hodimni o'chirish
 router.delete("/employees/:id", authenticate, employeeCtrl.deleteEmployee);
+
+
+
+
+
 
 module.exports = router;

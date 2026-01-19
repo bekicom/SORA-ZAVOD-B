@@ -1,6 +1,6 @@
 // config/db.js
 const mongoose = require("mongoose");
-
+const { startGlobalSyncJob } = require("../jobs/globalSync.job");
 const connectDB = async () => {
   try {
     const MONGO_URI =
@@ -12,6 +12,7 @@ const connectDB = async () => {
     });
 
     console.log("✅ MongoDB (Compass) ulandi");
+    startGlobalSyncJob();
   } catch (err) {
     console.error("❌ MongoDB ulanish xatosi:", err.message);
     process.exit(1);
