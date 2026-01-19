@@ -2,22 +2,40 @@ const mongoose = require("mongoose");
 
 const MainWarehouseSchema = new mongoose.Schema(
   {
-    // 🔗 Global katalog mahsuloti
+    /* =========================
+       🔗 GLOBAL PRODUCT (ASOSIY)
+    ========================= */
     global_product_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "GlobalProduct",
       required: true,
-      index: true,
     },
 
-    // 🏭 Qaysi unit ishlab chiqargan
+    /* =========================
+       🏭 UNIT (ZAVOD BO‘LIMI)
+    ========================= */
     unit_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Unit",
       required: true,
     },
 
-    // 📦 Miqdor
+ 
+    kategoriya_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Kategoriya",
+      required: true, // 🔥 zavod logikasi uchun majburiy
+    },
+
+    kategoriya_nomi: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    /* =========================
+       📦 MIQDOR
+    ========================= */
     miqdor: {
       type: Number,
       default: 0,
@@ -29,7 +47,9 @@ const MainWarehouseSchema = new mongoose.Schema(
       default: "dona",
     },
 
-    // 🧾 Kirim tarixi
+    /* =========================
+       🧾 KIRIM TARIXI
+    ========================= */
     kirim_tarix: [
       {
         miqdor: Number,
@@ -42,9 +62,16 @@ const MainWarehouseSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// 🔐 bitta global product + bitta unit = bitta qator
+/* =========================
+   🔐 UNIQUE QOIDA
+   Bitta global product + bitta unit + bitta kategoriya
+========================= */
 MainWarehouseSchema.index(
-  { global_product_id: 1, unit_id: 1 },
+  {
+    global_product_id: 1,
+    unit_id: 1,
+    kategoriya_id: 1,
+  },
   { unique: true },
 );
 

@@ -346,29 +346,51 @@ exports.getUnitOmbor = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Unit ID noto‘g‘ri" });
+      return res.status(400).json({
+        success: false,
+        message: "Unit ID noto‘g‘ri",
+      });
     }
 
-    const unit = await Unit.findById(id);
-
+    const unit = await Unit.findById(id).lean();
     if (!unit) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Bo‘lim topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Bo‘lim topilmadi",
+      });
     }
+
+    const kategoriyalarMap = new Map(
+      (unit.kategoriyalar || []).map((k) => [k._id.toString(), k.nom]),
+    );
+
+    const ombor = (unit.unit_ombor || []).map((item) => ({
+      _id: item._id,
+      kategoriya_id: item.kategoriya_id,
+      kategoriya_nomi:
+        kategoriyalarMap.get(item.kategoriya_id.toString()) ||
+        "Noma’lum kategoriya",
+      miqdor: item.miqdor,
+      birlik: item.birlik,
+      saqlanadigan_joy: item.saqlanadigan_joy,
+      createdAt: item.createdAt,
+    }));
 
     res.json({
       success: true,
       message: "Bo‘lim ichki ombori",
-      data: unit.unit_ombor || [],
+      data: ombor,
     });
   } catch (error) {
     console.error("getUnitOmbor error:", error);
-    res.status(500).json({ success: false, message: "Server xatolik" });
+    res.status(500).json({
+      success: false,
+      message: "Server xatolik",
+      error: error.message,
+    });
   }
 };
+
 
 /* ===================================================
    🔁 10️⃣ Unit uchun bog‘langan bo‘limlarni olish
@@ -441,6 +463,24 @@ exports.getIncomingOrdersForUnit = async (req, res) => {
       });
     }
 
+    /* =========================
+       UNIT + KATEGORIYALAR
+    ========================= */
+    const unit = await Unit.findById(id).lean();
+    if (!unit) {
+      return res.status(404).json({
+        success: false,
+        message: "Bo‘lim topilmadi",
+      });
+    }
+
+    const kategoriyaMap = new Map(
+      (unit.kategoriyalar || []).map((k) => [k._id.toString(), k.nom]),
+    );
+
+    /* =========================
+       ORDERS
+    ========================= */
     const orders = await WarehouseOrder.find({
       unit_id: id,
       status: { $in: ["completed", "confirmed"] },
@@ -449,11 +489,29 @@ exports.getIncomingOrdersForUnit = async (req, res) => {
       .sort({ completed_at: -1, createdAt: -1 })
       .lean();
 
+    /* =========================
+       FORMAT
+    ========================= */
+    const formatted = orders.map((o) => ({
+      _id: o._id,
+      unit_id: o.unit_id,
+      kategoriya_id: o.kategoriya_id,
+      kategoriya_nomi:
+        kategoriyaMap.get(o.kategoriya_id?.toString()) || "Noma’lum kategoriya",
+      quantity: o.quantity,
+      recipe_items: o.recipe_items || [],
+      requested_by: o.requested_by,
+      status: o.status,
+      createdAt: o.createdAt,
+      completed_at: o.completed_at,
+      unit_received: o.unit_received || false,
+    }));
+
     res.json({
       success: true,
       message: "Unitga kelgan tayyor zakaslar",
-      count: orders.length,
-      data: orders,
+      count: formatted.length,
+      data: formatted,
     });
   } catch (error) {
     console.error("getIncomingOrdersForUnit error:", error);
@@ -464,6 +522,7 @@ exports.getIncomingOrdersForUnit = async (req, res) => {
     });
   }
 };
+
 
 /* ===================================================
    ✅ 12️⃣ Unit zakasni qabul qilish (receive)

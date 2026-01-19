@@ -128,64 +128,85 @@ exports.approveInvoice = async (req, res) => {
        LOOP PRODUCTS
     ========================= */
     for (const p of invoice.mahsulotlar) {
-      // 1️⃣ unit ichidan kategoriya topamiz
+      if (!p.kategoriya_id || !p.miqdor || p.miqdor <= 0) {
+        console.warn("⚠️ Noto‘g‘ri mahsulot:", p);
+        continue;
+      }
+
+      /* =========================
+         KATEGORIYA
+      ========================= */
       const kategoriya = unit.kategoriyalar.find(
         (k) => k._id.toString() === p.kategoriya_id.toString(),
       );
-      if (!kategoriya) continue;
 
-      // 2️⃣ GLOBAL PRODUCT (catalog)
+      if (!kategoriya) {
+        console.warn("⚠️ Kategoriya topilmadi:", p.kategoriya_id);
+        continue;
+      }
+
+      /* =========================
+         1️⃣ GLOBAL PRODUCT (KATALOG)
+      ========================= */
       const globalProduct = await syncGlobalProduct({
-        name: kategoriya.nom, // ❗ majburiy
-        birlik: p.birlik || "dona",
-        category: unit.nom, // masalan: "Pishiriqlar"
+        name: kategoriya.nom,
+        birlik: "dona",
+        category: unit.nom,
       });
 
       if (!globalProduct || !globalProduct._id) {
-        throw new Error("Global product yaratilmadi");
+        console.warn("⚠️ Global product yaratilmadi:", kategoriya.nom);
+        continue;
       }
 
-      // 3️⃣ UNIT OMBORIDAN MINUS
-      const unitItem = unit.unit_ombor.find(
-        (i) => i.kategoriya_id.toString() === p.kategoriya_id.toString(),
+      /* =========================
+         2️⃣ UNIT OMBORIDAN MINUS
+      ========================= */
+      const omborItem = unit.unit_ombor.find(
+        (item) =>
+          item.kategoriya_id &&
+          item.kategoriya_id.toString() === p.kategoriya_id.toString(),
       );
 
-      if (unitItem) {
-        if (unitItem.miqdor < p.miqdor) {
-          throw new Error(
-            `${kategoriya.nom} uchun unit omborida yetarli miqdor yo‘q`,
-          );
-        }
-        unitItem.miqdor -= p.miqdor;
+      if (omborItem) {
+        omborItem.miqdor = Math.max(
+          Number(omborItem.miqdor) - Number(p.miqdor),
+          0,
+        );
       }
 
-      // 4️⃣ MAIN WAREHOUSE KIRIM
-      const mainItem = await MainWarehouse.findOne({
+      /* =========================
+         3️⃣ MAIN WAREHOUSE UPSERT
+         (unique index bilan 100% mos)
+      ========================= */
+      const filter = {
         global_product_id: globalProduct._id,
         unit_id: unit._id,
-      });
+        kategoriya_id: kategoriya._id,
+      };
 
-      if (mainItem) {
-        mainItem.miqdor += p.miqdor;
-        mainItem.kirim_tarix.push({
-          miqdor: p.miqdor,
-          kiritgan: approved_by || "Admin",
-        });
-        await mainItem.save();
-      } else {
-        await MainWarehouse.create({
+      const update = {
+        $inc: { miqdor: Number(p.miqdor) },
+        $setOnInsert: {
           global_product_id: globalProduct._id,
           unit_id: unit._id,
-          miqdor: p.miqdor,
-          birlik: globalProduct.birlik || "dona",
-          kirim_tarix: [
-            {
-              miqdor: p.miqdor,
-              kiritgan: approved_by || "Admin",
-            },
-          ],
-        });
-      }
+          kategoriya_id: kategoriya._id,
+          kategoriya_nomi: kategoriya.nom,
+          birlik: "dona",
+        },
+        $push: {
+          kirim_tarix: {
+            miqdor: Number(p.miqdor),
+            kiritgan: approved_by || "Admin",
+            sana: new Date(),
+          },
+        },
+      };
+
+      await MainWarehouse.findOneAndUpdate(filter, update, {
+        upsert: true,
+        new: true,
+      });
     }
 
     /* =========================
@@ -195,22 +216,24 @@ exports.approveInvoice = async (req, res) => {
 
     invoice.status = "approved";
     invoice.approved_by = approved_by || "Admin";
+    invoice.approved_at = new Date();
     await invoice.save();
 
-    return res.json({
+    res.json({
       success: true,
-      message:
-        "✅ Faktura tasdiqlandi (unit → main warehouse → global katalog)",
+      message: "✅ Faktura tasdiqlandi (unit → main warehouse → global)",
       data: invoice,
     });
   } catch (error) {
     console.error("approveInvoice error:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      message: error.message || "Server xatosi",
+      message: "Server xatosi",
     });
   }
 };
+
+
 /* ===================================================
    ❌ 5️⃣ Fakturani rad etish
 =================================================== */
