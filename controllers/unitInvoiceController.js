@@ -2,6 +2,8 @@ const UnitInvoice = require("../models/UnitInvoice");
 const Unit = require("../models/Unit");
 const MainWarehouse = require("../models/MainWarehouse");
 
+const syncGlobalProduct = require("../utils/syncGlobalProduct");
+
 /* ===================================================
    🧾 1️⃣ Unit tomonidan yangi faktura yaratish
 =================================================== */
@@ -93,66 +95,91 @@ exports.approveInvoice = async (req, res) => {
     const { id } = req.params;
     const { approved_by } = req.body;
 
+    /* =========================
+       INVOICE
+    ========================= */
     const invoice = await UnitInvoice.findById(id);
     if (!invoice) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Faktura topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Faktura topilmadi",
+      });
     }
 
     if (invoice.status === "approved") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Faktura allaqachon tasdiqlangan" });
+      return res.status(400).json({
+        success: false,
+        message: "Faktura allaqachon tasdiqlangan",
+      });
     }
 
-    // 🔹 Unitni topamiz
+    /* =========================
+       UNIT
+    ========================= */
     const unit = await Unit.findById(invoice.unit_id);
     if (!unit) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Unit topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Unit topilmadi",
+      });
     }
 
-    // 🔹 Har bir mahsulotni main omborga kiritamiz
+    /* =========================
+       LOOP PRODUCTS
+    ========================= */
     for (const p of invoice.mahsulotlar) {
+      // 1️⃣ unit ichidan kategoriya topamiz
       const kategoriya = unit.kategoriyalar.find(
-        (k) => k._id.toString() === p.kategoriya_id.toString()
+        (k) => k._id.toString() === p.kategoriya_id.toString(),
       );
-
       if (!kategoriya) continue;
 
-      // 🔹 Unit ichki omboridan kamaytiramiz
-      const omborItem = unit.unit_ombor.find(
-        (item) => item.kategoriya_id.toString() === p.kategoriya_id.toString()
-      );
-      if (omborItem) {
-        omborItem.miqdor = Math.max(omborItem.miqdor - p.miqdor, 0);
+      // 2️⃣ GLOBAL PRODUCT (catalog)
+      const globalProduct = await syncGlobalProduct({
+        name: kategoriya.nom, // ❗ majburiy
+        birlik: p.birlik || "dona",
+        category: unit.nom, // masalan: "Pishiriqlar"
+      });
+
+      if (!globalProduct || !globalProduct._id) {
+        throw new Error("Global product yaratilmadi");
       }
 
-      // 🔹 MainWarehouse ga kiritamiz yoki yangilaymiz
-      let mainItem = await MainWarehouse.findOne({
-        kategoriya_id: p.kategoriya_id,
-        unit_id: invoice.unit_id,
+      // 3️⃣ UNIT OMBORIDAN MINUS
+      const unitItem = unit.unit_ombor.find(
+        (i) => i.kategoriya_id.toString() === p.kategoriya_id.toString(),
+      );
+
+      if (unitItem) {
+        if (unitItem.miqdor < p.miqdor) {
+          throw new Error(
+            `${kategoriya.nom} uchun unit omborida yetarli miqdor yo‘q`,
+          );
+        }
+        unitItem.miqdor -= p.miqdor;
+      }
+
+      // 4️⃣ MAIN WAREHOUSE KIRIM
+      const mainItem = await MainWarehouse.findOne({
+        global_product_id: globalProduct._id,
+        unit_id: unit._id,
       });
 
       if (mainItem) {
         mainItem.miqdor += p.miqdor;
         mainItem.kirim_tarix.push({
-          unit_nomi: unit.nom,
           miqdor: p.miqdor,
           kiritgan: approved_by || "Admin",
         });
         await mainItem.save();
       } else {
         await MainWarehouse.create({
-          kategoriya_nomi: kategoriya.nom,
-          kategoriya_id: p.kategoriya_id,
-          unit_id: invoice.unit_id,
+          global_product_id: globalProduct._id,
+          unit_id: unit._id,
           miqdor: p.miqdor,
+          birlik: globalProduct.birlik || "dona",
           kirim_tarix: [
             {
-              unit_nomi: unit.nom,
               miqdor: p.miqdor,
               kiritgan: approved_by || "Admin",
             },
@@ -161,23 +188,29 @@ exports.approveInvoice = async (req, res) => {
       }
     }
 
+    /* =========================
+       SAVE
+    ========================= */
     await unit.save();
 
     invoice.status = "approved";
     invoice.approved_by = approved_by || "Admin";
     await invoice.save();
 
-    res.json({
+    return res.json({
       success: true,
-      message: "✅ Faktura tasdiqlandi va mahsulotlar asosiy omborga kiritildi",
+      message:
+        "✅ Faktura tasdiqlandi (unit → main warehouse → global katalog)",
       data: invoice,
     });
   } catch (error) {
     console.error("approveInvoice error:", error);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server xatosi",
+    });
   }
 };
-
 /* ===================================================
    ❌ 5️⃣ Fakturani rad etish
 =================================================== */

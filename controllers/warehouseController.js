@@ -1,7 +1,6 @@
 const WarehouseRoom = require("../models/WarehouseRoom");
 const axios = require("axios");
 
-
 /* 🌍 GLOBAL DB GA SYNC */
 async function syncToGlobal(product_name, qty) {
   try {
@@ -53,7 +52,7 @@ exports.getRoomById = async (req, res) => {
   try {
     const room = await WarehouseRoom.findById(
       req.params.id,
-      "-chiqimlar -kirimlar" // 🔹 bu joy muhim — chiqim/kirimlarni olib tashlaydi
+      "-chiqimlar -kirimlar", // 🔹 bu joy muhim — chiqim/kirimlarni olib tashlaydi
     );
 
     if (!room)
@@ -72,8 +71,6 @@ exports.getRoomById = async (req, res) => {
   }
 };
 
-/* 📥 Kirim */
-/* 📥 Kirim */
 exports.kirim = async (req, res) => {
   try {
     const { mahsulot, miqdor, birlik, izoh } = req.body;
@@ -134,7 +131,6 @@ exports.kirim = async (req, res) => {
     res.status(500).json({ success: false, message: "Server xatosi" });
   }
 };
-
 
 /* 📤 Chiqim */
 exports.chiqim = async (req, res) => {

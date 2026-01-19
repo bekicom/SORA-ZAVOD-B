@@ -2,56 +2,50 @@ const mongoose = require("mongoose");
 
 const MainWarehouseSchema = new mongoose.Schema(
   {
-    // 🔹 Mahsulot nomi
-    kategoriya_nomi: {
-      type: String,
+    // 🔗 Global katalog mahsuloti
+    global_product_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "GlobalProduct",
       required: true,
-      trim: true,
+      index: true,
     },
 
-    // 🔹 Qaysi unitdan keldi
+    // 🏭 Qaysi unit ishlab chiqargan
     unit_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Unit",
       required: true,
     },
 
-    // 🔹 Qaysi kategoriya (unit ichidagi mahsulot)
-    kategoriya_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-    },
-
-    // 🔹 Miqdor (nechta dona, kg, litr va h.k.)
+    // 📦 Miqdor
     miqdor: {
       type: Number,
-      required: true,
       default: 0,
+      min: 0,
     },
 
-    // 🔹 Birlik (masalan: dona, kg, litr)
     birlik: {
       type: String,
       default: "dona",
     },
 
-    // 🔹 Oxirgi kirim sanasi
-    last_kirim_date: {
-      type: Date,
-      default: Date.now,
-    },
-
-    // 🔹 Kirimlar tarixi (log)
+    // 🧾 Kirim tarixi
     kirim_tarix: [
       {
-        unit_nomi: String,
         miqdor: Number,
+        kiritgan: String,
         sana: { type: Date, default: Date.now },
-        kiritgan: String, // kim kiritdi (admin)
+        note: String,
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
+);
+
+// 🔐 bitta global product + bitta unit = bitta qator
+MainWarehouseSchema.index(
+  { global_product_id: 1, unit_id: 1 },
+  { unique: true },
 );
 
 module.exports = mongoose.model("MainWarehouse", MainWarehouseSchema);

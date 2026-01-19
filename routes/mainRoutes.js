@@ -22,7 +22,7 @@ const {
 } = require("../middleware/auth");
 router.get(
   "/public/warehouse/products/names",
-  warehouseCtrl.getAllProductNames
+  warehouseCtrl.getAllProductNames,
 );
 
 /* =======================================================
@@ -43,7 +43,7 @@ router.post(
   "/units/:id/add-category",
   authenticate,
   adminOnly,
-  unitCtrl.addCategory
+  unitCtrl.addCategory,
 );
 router.delete("/units/:id", authenticate, adminOnly, unitCtrl.deleteUnit);
 router.get("/units/code/:code", unitCtrl.getUnitByCode);
@@ -60,7 +60,7 @@ router.post(
   "/recipes/create",
   authenticate,
   adminOnly,
-  recipeCtrl.createRecipe
+  recipeCtrl.createRecipe,
 );
 router.get("/recipes", authenticate, adminOnly, recipeCtrl.getRecipes);
 router.get("/recipes/:id", authenticate, adminOnly, recipeCtrl.getRecipeById);
@@ -68,13 +68,13 @@ router.get(
   "/recipes/:unit_id/:kategoriya_id",
   authenticate,
   adminOnly,
-  recipeCtrl.getRecipeByCategory
+  recipeCtrl.getRecipeByCategory,
 );
 router.put(
   "/recipes/:id",
   authenticate,
   adminOnly,
-  recipeCtrl.updateRecipeByCategory
+  recipeCtrl.updateRecipeByCategory,
 );
 router.delete("/recipes/:id", authenticate, adminOnly, recipeCtrl.deleteRecipe);
 
@@ -85,46 +85,44 @@ router.post(
   "/warehouse/create",
   authenticate,
   adminOnly,
-  warehouseCtrl.createRoom
+  warehouseCtrl.createRoom,
 );
 router.get(
   "/warehouse",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseCtrl.getRooms
+  warehouseCtrl.getRooms,
 );
 router.get(
   "/warehouse/:id",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseCtrl.getRoomById
+  warehouseCtrl.getRoomById,
 );
 router.post(
   "/warehouse/:id/kirim",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseCtrl.kirim
+  warehouseCtrl.kirim,
 );
 router.post(
   "/warehouse/:id/chiqim",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseCtrl.chiqim
+  warehouseCtrl.chiqim,
 );
 router.get(
   "/warehouse/:id/kirimlar",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseCtrl.getKirimlar
+  warehouseCtrl.getKirimlar,
 );
 router.get(
   "/warehouse/:id/chiqimlar",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseCtrl.getChiqimlar
+  warehouseCtrl.getChiqimlar,
 );
-
-
 
 /* =======================================================
    📦 OMBORGA ZAKAS (WAREHOUSE ORDERS)
@@ -139,7 +137,7 @@ router.get("/warehouse-orders", authenticate, warehouseOrderCtrl.getOrders);
 router.put(
   "/warehouse-orders/:id/approve",
   authenticate,
-  warehouseOrderCtrl.approveOrder
+  warehouseOrderCtrl.approveOrder,
 );
 
 /* =======================================================
@@ -148,7 +146,7 @@ router.put(
 router.get("/main-warehouse", mainWarehouseCtrl.getProducts);
 router.get(
   "/main-warehouse/unit/:unit_id/history",
-  mainWarehouseCtrl.getUnitKirimHistory
+  mainWarehouseCtrl.getUnitKirimHistory,
 );
 router.get("/main-warehouse/admin-view", mainWarehouseCtrl.getAdminView);
 
@@ -157,7 +155,7 @@ router.get("/main-warehouse/admin-view", mainWarehouseCtrl.getAdminView);
 router.post(
   "/main-warehouse/minus",
 
-  mainWarehouseCtrl.minusFromMainWarehouse
+  mainWarehouseCtrl.minusFromMainWarehouse,
 );
 
 router.post("/unit-invoices/create", unitInvoiceCtrl.createInvoice);
@@ -182,16 +180,11 @@ router.put("/unit-requests/:id/approve", unitRequestCtrl.approveRequest);
 router.put("/unit-requests/:id/receive", unitRequestCtrl.receiveRequest);
 router.put("/unit-requests/:id/reject", unitRequestCtrl.rejectRequest);
 router.get("/unit-requests/to/:unit_code", unitRequestCtrl.getRequestsForUnit);
-router.get(
-  "/units/:id/incoming-orders",
-  authenticate, // unit xodimi token bilan kiradi
-  authorize(["admin", "omborchi", "unit"]), // sizda unit role bo'lsa qo'shiladi
-  unitCtrl.getIncomingOrdersForUnit
-);
+router.get("/units/:id/incoming-orders", unitCtrl.getIncomingOrdersForUnit);
 
 router.put(
   "/units/orders/:order_id/receive",
-  unitCtrl.confirmOrderReceivedByUnit
+  unitCtrl.confirmOrderReceivedByUnit,
 );
 /* =======================================================
    👨‍💼 OMBORCHI (SKLADCHI) ROUTE'LARI - YANGILANDI!
@@ -201,7 +194,7 @@ router.get(
   "/skladchi/orders",
   authenticate,
   authorize(["admin", "omborchi"]),
-  warehouseOrderCtrl.getApprovedOrdersForSkladchi
+  warehouseOrderCtrl.getApprovedOrdersForSkladchi,
 );
 
 // 🖨️ Chop etish uchun zakas ma'lumotlari
@@ -209,7 +202,7 @@ router.get(
   "/skladchi/orders/:id/print",
   authenticate,
   omborchiOnly,
-  warehouseOrderCtrl.getOrderForPrint
+  warehouseOrderCtrl.getOrderForPrint,
 );
 
 // ✅ OMBORCHI: Zakasni tasdiqlash (YANGI!)
@@ -217,7 +210,7 @@ router.put(
   "/skladchi/orders/:id/confirm",
   authenticate,
   omborchiOnly,
-  warehouseOrderCtrl.confirmOrder
+  warehouseOrderCtrl.confirmOrder,
 );
 
 /* =======================================================
@@ -255,7 +248,7 @@ router.post(
   "/employees/create",
   authenticate,
   adminOnly,
-  employeeCtrl.createEmployee
+  employeeCtrl.createEmployee,
 );
 
 // 📋 Barcha hodimlar
@@ -263,7 +256,7 @@ router.get(
   "/employees",
   authenticate,
   authorize(["admin", "omborchi"]),
-  employeeCtrl.getEmployees
+  employeeCtrl.getEmployees,
 );
 
 // 📄 Bitta hodim
@@ -271,7 +264,7 @@ router.get(
   "/employees/:id",
   authenticate,
   authorize(["admin", "omborchi"]),
-  employeeCtrl.getEmployeeById
+  employeeCtrl.getEmployeeById,
 );
 
 // ✏️ Hodimni yangilash
@@ -279,7 +272,5 @@ router.put("/employees/:id", authenticate, employeeCtrl.updateEmployee);
 
 // ❌ Hodimni o'chirish
 router.delete("/employees/:id", authenticate, employeeCtrl.deleteEmployee);
-
-
 
 module.exports = router;
