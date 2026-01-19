@@ -1,4 +1,18 @@
 const WarehouseRoom = require("../models/WarehouseRoom");
+const axios = require("axios");
+
+
+/* 🌍 GLOBAL DB GA SYNC */
+async function syncToGlobal(product_name, qty) {
+  try {
+    await axios.post("http://localhost:4000/api/global-products/in", {
+      product_name,
+      qty,
+    });
+  } catch (err) {
+    console.error("❌ Global sync error:", err.message);
+  }
+}
 
 /* 🧱 Xona yaratish */
 exports.createRoom = async (req, res) => {
@@ -59,6 +73,7 @@ exports.getRoomById = async (req, res) => {
 };
 
 /* 📥 Kirim */
+/* 📥 Kirim */
 exports.kirim = async (req, res) => {
   try {
     const { mahsulot, miqdor, birlik, izoh } = req.body;
@@ -96,7 +111,11 @@ exports.kirim = async (req, res) => {
       sana: new Date(),
     });
 
+    // ✅ LOCAL DB SAQLANADI
     await room.save();
+
+    // 🌍 GLOBAL DB GA YUBORAMIZ
+    await syncToGlobal(mahsulot, miqdor);
 
     res.json({
       success: true,
@@ -115,6 +134,7 @@ exports.kirim = async (req, res) => {
     res.status(500).json({ success: false, message: "Server xatosi" });
   }
 };
+
 
 /* 📤 Chiqim */
 exports.chiqim = async (req, res) => {
