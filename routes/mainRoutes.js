@@ -12,9 +12,8 @@ const unitInvoiceCtrl = require("../controllers/unitInvoiceController");
 const unitLinkCtrl = require("../controllers/unitLinkController");
 const unitRequestCtrl = require("../controllers/unitRequestController");
 const employeeCtrl = require("../controllers/employee.controller");
-
-
-
+const warehouseeeController = require("../controllers/warehouseeeController");
+const factoryOrderController = require("../controllers/factoryOrder.controller");
 // === Middlewarelar ===
 const {
   authenticate,
@@ -275,9 +274,19 @@ router.put("/employees/:id", authenticate, employeeCtrl.updateEmployee);
 // ❌ Hodimni o'chirish
 router.delete("/employees/:id", authenticate, employeeCtrl.deleteEmployee);
 
+router.get(
+  "/factory/warehouse/products",
+  warehouseeeController.getAllWarehouseProducts,
+);
 
+router.post(
+  "/factory/warehouse/bulk-minus",
+  warehouseeeController.bulkMinusWarehouseProducts,
+);
 
-
-
+router.put(
+  "/factory/orders/:id/confirm",
+  factoryOrderController.confirmFactoryOrderAuto,
+);
 
 module.exports = router;
