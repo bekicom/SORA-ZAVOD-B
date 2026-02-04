@@ -1,6 +1,7 @@
 const UnitInvoice = require("../models/UnitInvoice");
 const Unit = require("../models/Unit");
-const MainWarehouse = require("../models/MainWarehouse");
+// const MainWarehouse = require("../models/MainWarehouse");
+const WarehouseRoom = require("../models/WarehouseRoom");
 
 const syncGlobalProduct = require("../utils/syncGlobalProduct");
 
@@ -99,28 +100,36 @@ exports.approveInvoice = async (req, res) => {
        INVOICE
     ========================= */
     const invoice = await UnitInvoice.findById(id);
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: "Faktura topilmadi",
-      });
-    }
+    if (!invoice)
+      return res
+        .status(404)
+        .json({ success: false, message: "Faktura topilmadi" });
 
-    if (invoice.status === "approved") {
+    if (invoice.status === "approved")
       return res.status(400).json({
         success: false,
         message: "Faktura allaqachon tasdiqlangan",
       });
-    }
 
     /* =========================
        UNIT
     ========================= */
     const unit = await Unit.findById(invoice.unit_id);
-    if (!unit) {
-      return res.status(404).json({
-        success: false,
-        message: "Unit topilmadi",
+    if (!unit)
+      return res
+        .status(404)
+        .json({ success: false, message: "Unit topilmadi" });
+
+    /* =========================
+       TAYYOR MAHSULOTLAR XONASI
+    ========================= */
+    let readyRoom = await WarehouseRoom.findOne({
+      nom: /tayyor mahsulotlar/i,
+    });
+
+    if (!readyRoom) {
+      readyRoom = await WarehouseRoom.create({
+        nom: "Tayyor mahsulotlar",
       });
     }
 
@@ -128,91 +137,54 @@ exports.approveInvoice = async (req, res) => {
        LOOP PRODUCTS
     ========================= */
     for (const p of invoice.mahsulotlar) {
-      if (!p.kategoriya_id || !p.miqdor || p.miqdor <= 0) {
-        console.warn("⚠️ Noto‘g‘ri mahsulot:", p);
-        continue;
-      }
+      if (!p.kategoriya_id || !p.miqdor || p.miqdor <= 0) continue;
 
-      /* =========================
-         KATEGORIYA
-      ========================= */
       const kategoriya = unit.kategoriyalar.find(
         (k) => k._id.toString() === p.kategoriya_id.toString(),
       );
+      if (!kategoriya) continue;
 
-      if (!kategoriya) {
-        console.warn("⚠️ Kategoriya topilmadi:", p.kategoriya_id);
-        continue;
-      }
-
-      /* =========================
-         1️⃣ GLOBAL PRODUCT (KATALOG)
-      ========================= */
-      const globalProduct = await syncGlobalProduct({
+      /* 1️⃣ Global katalog (faqat nomi uchun) */
+      await syncGlobalProduct({
         name: kategoriya.nom,
         birlik: "dona",
         category: unit.nom,
       });
 
-      if (!globalProduct || !globalProduct._id) {
-        console.warn("⚠️ Global product yaratilmadi:", kategoriya.nom);
-        continue;
+      /* 2️⃣ UNIT OMBORIDAN MINUS */
+      const unitItem = unit.unit_ombor.find(
+        (i) => i.kategoriya_id.toString() === p.kategoriya_id.toString(),
+      );
+      if (unitItem) {
+        unitItem.miqdor = Math.max(unitItem.miqdor - p.miqdor, 0);
       }
 
-      /* =========================
-         2️⃣ UNIT OMBORIDAN MINUS
-      ========================= */
-      const omborItem = unit.unit_ombor.find(
-        (item) =>
-          item.kategoriya_id &&
-          item.kategoriya_id.toString() === p.kategoriya_id.toString(),
+      /* 3️⃣ TAYYOR MAHSULOTLAR XONASIGA PLUS */
+      const roomItem = readyRoom.mahsulotlar.find(
+        (m) => m.nom === kategoriya.nom,
       );
 
-      if (omborItem) {
-        omborItem.miqdor = Math.max(
-          Number(omborItem.miqdor) - Number(p.miqdor),
-          0,
-        );
+      if (roomItem) {
+        roomItem.miqdor += Number(p.miqdor);
+        roomItem.oxirgi_ozgarish = new Date();
+      } else {
+        readyRoom.mahsulotlar.push({
+          nom: kategoriya.nom,
+          miqdor: Number(p.miqdor),
+          birlik: "dona",
+        });
       }
 
-      /* =========================
-         3️⃣ MAIN WAREHOUSE UPSERT
-         (unique index bilan 100% mos)
-      ========================= */
-      const filter = {
-        global_product_id: globalProduct._id,
-        unit_id: unit._id,
-        kategoriya_id: kategoriya._id,
-      };
-
-      const update = {
-        $inc: { miqdor: Number(p.miqdor) },
-        $setOnInsert: {
-          global_product_id: globalProduct._id,
-          unit_id: unit._id,
-          kategoriya_id: kategoriya._id,
-          kategoriya_nomi: kategoriya.nom,
-          birlik: "dona",
-        },
-        $push: {
-          kirim_tarix: {
-            miqdor: Number(p.miqdor),
-            kiritgan: approved_by || "Admin",
-            sana: new Date(),
-          },
-        },
-      };
-
-      await MainWarehouse.findOneAndUpdate(filter, update, {
-        upsert: true,
-        new: true,
+      readyRoom.kirimlar.push({
+        mahsulot: kategoriya.nom,
+        miqdor: Number(p.miqdor),
+        birlik: "dona",
+        izoh: `Unit (${unit.nom}) dan kelgan`,
       });
     }
 
-    /* =========================
-       SAVE
-    ========================= */
     await unit.save();
+    await readyRoom.save();
 
     invoice.status = "approved";
     invoice.approved_by = approved_by || "Admin";
@@ -221,15 +193,15 @@ exports.approveInvoice = async (req, res) => {
 
     res.json({
       success: true,
-      message: "✅ Faktura tasdiqlandi (unit → main warehouse → global)",
-      data: invoice,
+      message: "✅ Faktura tasdiqlandi va tayyor mahsulotlar omboriga joylandi",
+      data: {
+        invoice_id: invoice._id,
+        warehouse_room: readyRoom.nom,
+      },
     });
   } catch (error) {
     console.error("approveInvoice error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server xatosi",
-    });
+    res.status(500).json({ success: false, message: "Server xatosi" });
   }
 };
 

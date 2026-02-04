@@ -7,7 +7,7 @@ const unitCtrl = require("../controllers/unitController");
 const recipeCtrl = require("../controllers/recipeController");
 const warehouseCtrl = require("../controllers/warehouseController");
 const warehouseOrderCtrl = require("../controllers/warehouseOrderController");
-const mainWarehouseCtrl = require("../controllers/mainWarehouseController");
+// const mainWarehouseCtrl = require("../controllers/mainWarehouseController");
 const unitInvoiceCtrl = require("../controllers/unitInvoiceController");
 const unitLinkCtrl = require("../controllers/unitLinkController");
 const unitRequestCtrl = require("../controllers/unitRequestController");
@@ -144,20 +144,20 @@ router.put(
 /* =======================================================
    🏢 ASOSIY OMBOR (MAIN WAREHOUSE)
 ======================================================= */
-router.get("/main-warehouse", mainWarehouseCtrl.getProducts);
-router.get(
-  "/main-warehouse/unit/:unit_id/history",
-  mainWarehouseCtrl.getUnitKirimHistory,
-);
-router.get("/main-warehouse/admin-view", mainWarehouseCtrl.getAdminView);
+// router.get("/main-warehouse", mainWarehouseCtrl.getProducts);
+// router.get(
+//   "/main-warehouse/unit/:unit_id/history",
+//   mainWarehouseCtrl.getUnitKirimHistory,
+// );
+// router.get("/main-warehouse/admin-view", mainWarehouseCtrl.getAdminView);
 
-// 🔻 YANGI: Asosiy ombordan mahsulotni minus qilish
-// POST /api/main-warehouse/minus
-router.post(
-  "/main-warehouse/minus",
+// // 🔻 YANGI: Asosiy ombordan mahsulotni minus qilish
+// // POST /api/main-warehouse/minus
+// router.post(
+//   "/main-warehouse/minus",
 
-  mainWarehouseCtrl.minusFromMainWarehouse,
-);
+//   mainWarehouseCtrl.minusFromMainWarehouse,
+// );
 
 router.post("/unit-invoices/create", unitInvoiceCtrl.createInvoice);
 router.get("/unit-invoices", unitInvoiceCtrl.getAllInvoices);

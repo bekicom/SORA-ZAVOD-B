@@ -1,17 +1,5 @@
 const WarehouseRoom = require("../models/WarehouseRoom");
-const axios = require("axios");
 
-/* 🌍 GLOBAL DB GA SYNC */
-async function syncToGlobal(product_name, qty) {
-  try {
-    await axios.post("http://localhost:4000/api/global-products/in", {
-      product_name,
-      qty,
-    });
-  } catch (err) {
-    console.error("❌ Global sync error:", err.message);
-  }
-}
 
 /* 🧱 Xona yaratish */
 exports.createRoom = async (req, res) => {
