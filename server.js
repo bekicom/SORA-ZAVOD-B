@@ -25,7 +25,7 @@ const io = new Server(server, {
 });
 
 /* ===================================================
-   🧠 SOCKET.IO ULANISH - YANGILANDI!
+   🧠 SOCKET.IO ULANISH -
 =================================================== */
 io.on("connection", (socket) => {
   console.log("🟢 Socket ulandi:", socket.id);
