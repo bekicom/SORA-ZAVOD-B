@@ -125,6 +125,13 @@ router.get(
   warehouseCtrl.getChiqimlar,
 );
 
+router.get(
+  "/factory/stock/summary",
+  authenticate,
+  authorize(["admin", "omborchi"]),
+  warehouseCtrl.getFactoryStockSummary,
+);
+
 /* =======================================================
    📦 OMBORGA ZAKAS (WAREHOUSE ORDERS)
 ======================================================= */

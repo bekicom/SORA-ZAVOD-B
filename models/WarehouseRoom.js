@@ -7,6 +7,7 @@ const WarehouseRoomSchema = new mongoose.Schema(
 
     mahsulotlar: [
       {
+        product_code: { type: String, index: true }, // masalan: TORT_QULPUNAY
         nom: { type: String, required: true },
         miqdor: { type: Number, default: 0 },
         birlik: { type: String, default: "dona" },
@@ -38,7 +39,7 @@ const WarehouseRoomSchema = new mongoose.Schema(
 
     status: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("WarehouseRoom", WarehouseRoomSchema);

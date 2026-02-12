@@ -263,3 +263,50 @@ exports.getAllProductNames = async (req, res) => {
     });
   }
 };
+
+/* ===================================================
+   📊 Zavod omborlari bo‘yicha umumiy qoldiq (SUMMARY)
+   GET /factory/stock/summary
+=================================================== */
+exports.getFactoryStockSummary = async (req, res) => {
+  try {
+    const rooms = await WarehouseRoom.find({ status: true }).lean();
+
+    const summaryMap = new Map();
+
+    for (const room of rooms) {
+      for (const item of room.mahsulotlar || []) {
+        if (!item.nom) continue;
+
+        if (!summaryMap.has(item.nom)) {
+          summaryMap.set(item.nom, {
+            mahsulot: item.nom,
+            birlik: item.birlik || "dona",
+            jami_miqdor: 0,
+            joylashuvlar: [],
+          });
+        }
+
+        const row = summaryMap.get(item.nom);
+        row.jami_miqdor += Number(item.miqdor || 0);
+
+        row.joylashuvlar.push({
+          xona: room.nom,
+          miqdor: item.miqdor,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      count: summaryMap.size,
+      data: Array.from(summaryMap.values()),
+    });
+  } catch (err) {
+    console.error("getFactoryStockSummary error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server xatosi",
+    });
+  }
+};
