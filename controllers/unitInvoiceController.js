@@ -72,7 +72,7 @@ exports.getInvoiceById = async (req, res) => {
   try {
     const invoice = await UnitInvoice.findById(req.params.id).populate(
       "unit_id",
-      "nom turi"
+      "nom turi",
     );
 
     if (!invoice) {
@@ -91,45 +91,49 @@ exports.getInvoiceById = async (req, res) => {
 /* ===================================================
    ✅ 4️⃣ Fakturani tasdiqlash (Admin)
 =================================================== */
+
+
+
 exports.approveInvoice = async (req, res) => {
   try {
     const { id } = req.params;
     const { approved_by } = req.body;
 
-    /* =========================
-       INVOICE
-    ========================= */
     const invoice = await UnitInvoice.findById(id);
-    if (!invoice)
-      return res
-        .status(404)
-        .json({ success: false, message: "Faktura topilmadi" });
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Faktura topilmadi",
+      });
+    }
 
-    if (invoice.status === "approved")
+    if (invoice.status === "approved") {
       return res.status(400).json({
         success: false,
         message: "Faktura allaqachon tasdiqlangan",
       });
+    }
 
-    /* =========================
-       UNIT
-    ========================= */
     const unit = await Unit.findById(invoice.unit_id);
-    if (!unit)
-      return res
-        .status(404)
-        .json({ success: false, message: "Unit topilmadi" });
+    if (!unit) {
+      return res.status(404).json({
+        success: false,
+        message: "Unit topilmadi",
+      });
+    }
 
     /* =========================
-       TAYYOR MAHSULOTLAR XONASI
+       TAYYOR MAHSULOTLAR ROOM
     ========================= */
     let readyRoom = await WarehouseRoom.findOne({
-      nom: /tayyor mahsulotlar/i,
+      nom: "Tayyor mahsulotlar",
     });
 
     if (!readyRoom) {
       readyRoom = await WarehouseRoom.create({
         nom: "Tayyor mahsulotlar",
+        mahsulotlar: [],
+        kirimlar: [],
       });
     }
 
@@ -142,31 +146,25 @@ exports.approveInvoice = async (req, res) => {
       const kategoriya = unit.kategoriyalar.find(
         (k) => k._id.toString() === p.kategoriya_id.toString(),
       );
+
       if (!kategoriya) continue;
 
-      /* 1️⃣ Global katalog (faqat nomi uchun) */
-      await syncGlobalProduct({
-        name: kategoriya.nom,
-        birlik: "dona",
-        category: unit.nom,
-      });
-
-      /* 2️⃣ UNIT OMBORIDAN MINUS */
+      /* 1️⃣ UNIT OMBORIDAN MINUS */
       const unitItem = unit.unit_ombor.find(
         (i) => i.kategoriya_id.toString() === p.kategoriya_id.toString(),
       );
+
       if (unitItem) {
         unitItem.miqdor = Math.max(unitItem.miqdor - p.miqdor, 0);
       }
 
-      /* 3️⃣ TAYYOR MAHSULOTLAR XONASIGA PLUS */
+      /* 2️⃣ TAYYOR ROOMGA PLUS */
       const roomItem = readyRoom.mahsulotlar.find(
         (m) => m.nom === kategoriya.nom,
       );
 
       if (roomItem) {
         roomItem.miqdor += Number(p.miqdor);
-        roomItem.oxirgi_ozgarish = new Date();
       } else {
         readyRoom.mahsulotlar.push({
           nom: kategoriya.nom,
@@ -175,11 +173,13 @@ exports.approveInvoice = async (req, res) => {
         });
       }
 
+      /* 3️⃣ KIRIM TARIXI */
       readyRoom.kirimlar.push({
         mahsulot: kategoriya.nom,
         miqdor: Number(p.miqdor),
         birlik: "dona",
         izoh: `Unit (${unit.nom}) dan kelgan`,
+        sana: new Date(),
       });
     }
 
@@ -193,17 +193,21 @@ exports.approveInvoice = async (req, res) => {
 
     res.json({
       success: true,
-      message: "✅ Faktura tasdiqlandi va tayyor mahsulotlar omboriga joylandi",
-      data: {
-        invoice_id: invoice._id,
-        warehouse_room: readyRoom.nom,
-      },
+      message: "Faktura tasdiqlandi va Tayyor mahsulotlar omboriga joylandi",
+      room: readyRoom.nom,
     });
   } catch (error) {
     console.error("approveInvoice error:", error);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    res.status(500).json({
+      success: false,
+      message: "Server xatosi",
+      error: error.message,
+    });
   }
 };
+
+
+
 
 
 /* ===================================================
