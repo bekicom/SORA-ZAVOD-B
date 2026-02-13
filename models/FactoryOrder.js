@@ -18,7 +18,7 @@ const FactoryOrderItemSchema = new mongoose.Schema(
 
     qty: {
       type: Number,
-      required: true,
+      // required: true,
       min: 1,
     },
 

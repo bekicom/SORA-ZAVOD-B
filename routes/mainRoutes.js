@@ -127,8 +127,8 @@ router.get(
 
 router.get(
   "/factory/stock/summary",
-  authenticate,
-  authorize(["admin", "omborchi"]),
+  // authenticate,
+  // authorize(["admin", "omborchi"]),
   warehouseCtrl.getFactoryStockSummary,
 );
 
@@ -281,19 +281,25 @@ router.put("/employees/:id", authenticate, employeeCtrl.updateEmployee);
 // ❌ Hodimni o'chirish
 router.delete("/employees/:id", authenticate, employeeCtrl.deleteEmployee);
 
-router.get(
-  "/factory/warehouse/products",
-  warehouseeeController.getAllWarehouseProducts,
-);
+// router.get(
+//   "/factory/warehouse/products",
+//   warehouseeeController.getAllWarehouseProducts,
+// );
 
-router.post(
-  "/factory/warehouse/bulk-minus",
-  warehouseeeController.bulkMinusWarehouseProducts,
-);
+// router.post(
+//   "/factory/warehouse/bulk-minus",
+//   warehouseeeController.bulkMinusWarehouseProducts,
+// );
 
-router.put(
-  "/factory/orders/:id/confirm",
-  factoryOrderController.confirmFactoryOrderAuto,
+// router.put(
+//   "/factory/orders/:id/confirm",
+//   factoryOrderController.confirmFactoryOrderAuto,
+// );
+
+// dokondan kelgan zakas va uni tasdiqlash
+router.patch(
+  "/factory-orders/:orderId/approve",
+  factoryOrderController.approveFactoryOrder,
 );
 
 module.exports = router;

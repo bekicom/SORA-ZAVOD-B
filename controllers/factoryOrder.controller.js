@@ -1,102 +1,92 @@
-const FactoryOrder = require("../models/FactoryOrder");
-const MainWarehouse = require("../models/MainWarehouse");
+const axios = require("axios");
 const WarehouseRoom = require("../models/WarehouseRoom");
 
-exports.confirmFactoryOrderAuto = async (req, res) => {
+const GLOBAL_API_URL = process.env.GLOBAL_API_URL;
+
+/* =========================
+   APPROVE FACTORY ORDER
+========================= */
+exports.approveFactoryOrder = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { orderId } = req.params;
 
-    // 1️⃣ ZAKASNI OLAMIZ
-    const order = await FactoryOrder.findById(id);
+    // 1️⃣ Globaldan orderni olish
+    const orderRes = await axios.get(
+      `${GLOBAL_API_URL}/api/global/shop-orders`,
+    );
+
+    const order = orderRes.data.data.find((o) => o._id === orderId);
+
     if (!order) {
-      return res.status(404).json({ ok: false, message: "Zakas topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Order topilmadi",
+      });
     }
 
-    if (order.status !== "NEW") {
+    if (order.status !== "PENDING") {
       return res.status(400).json({
-        ok: false,
-        message: "Zakas allaqachon tasdiqlangan",
+        success: false,
+        message: "Order allaqachon ko‘rilgan",
       });
     }
 
-    // 2️⃣ HAR BIR PRODUCT UCHUN
-    for (const item of order.items) {
-      let remaining = item.qty;
+    // 2️⃣ Omborni topamiz
+    const warehouse = await WarehouseRoom.findOne({ status: true });
 
-      /* =========================
-         🔴 MAIN OMBORDAN AYIRISH
-      ========================= */
-      const mains = await MainWarehouse.find({
-        kategoriya_nomi: item.product_name,
-        miqdor: { $gt: 0 },
+    if (!warehouse) {
+      return res.status(404).json({
+        success: false,
+        message: "Ombor topilmadi",
       });
-
-      for (const m of mains) {
-        if (remaining <= 0) break;
-
-        const take = Math.min(m.miqdor, remaining);
-
-        await MainWarehouse.updateOne(
-          { _id: m._id },
-          { $inc: { miqdor: -take } },
-        );
-
-        remaining -= take;
-      }
-
-      /* =========================
-         🔵 ROOM OMBORDAN AYIRISH
-      ========================= */
-      if (remaining > 0) {
-        const rooms = await WarehouseRoom.find({
-          "mahsulotlar.nom": item.product_name,
-        });
-
-        for (const room of rooms) {
-          for (const p of room.mahsulotlar) {
-            if (remaining <= 0) break;
-            if (p.nom !== item.product_name || p.miqdor <= 0) continue;
-
-            const take = Math.min(p.miqdor, remaining);
-
-            await WarehouseRoom.updateOne(
-              {
-                _id: room._id,
-                "mahsulotlar.nom": item.product_name,
-              },
-              {
-                $inc: { "mahsulotlar.$.miqdor": -take },
-                $set: {
-                  "mahsulotlar.$.oxirgi_ozgarish": new Date(),
-                },
-              },
-            );
-
-            remaining -= take;
-          }
-        }
-      }
-
-      // ❌ AGAR YETMAY QOLSA
-      if (remaining > 0) {
-        return res.status(400).json({
-          ok: false,
-          message: `${item.product_name} omborlarda yetarli emas`,
-        });
-      }
     }
 
-    // 3️⃣ ZAKASNI TASDIQLAYMIZ
-    order.status = "CONFIRMED";
-    await order.save();
+    // 3️⃣ Mahsulotni topamiz
+    const product = warehouse.mahsulotlar.find(
+      (p) => p.nom === order.product_name,
+    );
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Mahsulot omborda yo‘q",
+      });
+    }
+
+    if (product.miqdor < order.qty) {
+      return res.status(400).json({
+        success: false,
+        message: "Omborda yetarli mahsulot yo‘q",
+      });
+    }
+
+    // 4️⃣ Minus qilamiz
+    product.miqdor -= order.qty;
+    product.oxirgi_ozgarish = new Date();
+
+    // 5️⃣ Chiqim tarixiga yozamiz
+    warehouse.chiqimlar.push({
+      mahsulot: product.nom,
+      miqdor: order.qty,
+      izoh: `Filialga jo‘natildi (${order.shop_name})`,
+    });
+
+    await warehouse.save();
+
+    // 6️⃣ Globalda statusni APPROVED qilamiz
+    await axios.patch(
+      `${GLOBAL_API_URL}/api/global/shop-orders/${orderId}/approve`,
+    );
 
     res.json({
-      ok: true,
-      message: "Zakas tasdiqlandi va omborlardan avtomat minus qilindi ✅",
-      order_id: order._id,
+      success: true,
+      message: "Order tasdiqlandi va ombordan chiqarildi",
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, message: err.message });
+  } catch (error) {
+    console.error("❌ approveFactoryOrder:", error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
