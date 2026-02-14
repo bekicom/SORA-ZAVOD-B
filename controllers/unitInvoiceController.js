@@ -92,8 +92,6 @@ exports.getInvoiceById = async (req, res) => {
    ✅ 4️⃣ Fakturani tasdiqlash (Admin)
 =================================================== */
 
-
-
 exports.approveInvoice = async (req, res) => {
   try {
     const { id } = req.params;
@@ -205,10 +203,6 @@ exports.approveInvoice = async (req, res) => {
     });
   }
 };
-
-
-
-
 
 /* ===================================================
    ❌ 5️⃣ Fakturani rad etish

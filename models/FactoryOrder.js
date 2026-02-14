@@ -16,9 +16,9 @@ const FactoryOrderItemSchema = new mongoose.Schema(
       trim: true,
     },
 
-    qty: {
+    soni: {
       type: Number,
-      // required: true,
+      required: true,
       min: 1,
     },
 
