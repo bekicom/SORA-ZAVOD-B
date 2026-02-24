@@ -163,11 +163,14 @@ exports.approveInvoice = async (req, res) => {
 
       if (roomItem) {
         roomItem.miqdor += Number(p.miqdor);
+        roomItem.turi = "tayyor";
       } else {
         readyRoom.mahsulotlar.push({
           nom: kategoriya.nom,
+          turi: "tayyor",
           miqdor: Number(p.miqdor),
           birlik: "dona",
+          price: 0,
         });
       }
 

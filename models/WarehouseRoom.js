@@ -9,8 +9,14 @@ const WarehouseRoomSchema = new mongoose.Schema(
       {
         product_code: { type: String, index: true }, // masalan: TORT_QULPUNAY
         nom: { type: String, required: true },
+        turi: {
+          type: String,
+          enum: ["tayyor", "yarim_tayyor"],
+          default: "yarim_tayyor",
+        },
         miqdor: { type: Number, default: 0 },
         birlik: { type: String, default: "dona" },
+        price: { type: Number, default: 0, min: 0 },
         kirim_sana: { type: Date, default: Date.now },
         oxirgi_ozgarish: { type: Date, default: Date.now },
       },

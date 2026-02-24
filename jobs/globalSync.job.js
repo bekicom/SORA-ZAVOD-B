@@ -13,6 +13,8 @@ async function processOne(item) {
       birlik: item.birlik,
       category: item.category,
       qty: item.qty,
+      price: item.price,
+      product_type: item.product_type,
     });
 
     item.status = "done";

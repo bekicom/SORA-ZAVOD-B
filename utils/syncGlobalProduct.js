@@ -8,6 +8,9 @@ module.exports = async function syncGlobalProduct({
   name,
   birlik = "dona",
   category = "Zavod",
+  qty,
+  price,
+  product_type,
 }) {
   if (!name) {
     throw new Error("syncGlobalProduct: name majburiy");
@@ -18,11 +21,20 @@ module.exports = async function syncGlobalProduct({
   }
 
   try {
-    const res = await axios.post(`${GLOBAL_API_URL}/api/global-products/sync`, {
+    const payload = {
       name,
       birlik,
       category,
-    });
+    };
+
+    if (typeof qty === "number") payload.qty = qty;
+    if (typeof price === "number") payload.price = price;
+    if (product_type) payload.product_type = product_type;
+
+    const res = await axios.post(
+      `${GLOBAL_API_URL}/api/global-products/sync`,
+      payload,
+    );
 
     if (!res.data?.success) {
       throw new Error("Global product sync failed");

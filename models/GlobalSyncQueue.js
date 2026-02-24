@@ -7,6 +7,11 @@ const GlobalSyncQueueSchema = new mongoose.Schema(
     birlik: String,
     category: String,
     qty: Number,
+    price: Number,
+    product_type: {
+      type: String,
+      enum: ["tayyor", "yarim_tayyor"],
+    },
 
     source: {
       type: String,
@@ -20,6 +25,7 @@ const GlobalSyncQueueSchema = new mongoose.Schema(
     },
 
     error: String,
+    retry_count: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

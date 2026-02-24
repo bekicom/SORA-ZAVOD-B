@@ -90,8 +90,8 @@ router.post(
 );
 router.get(
   "/warehouse",
-  authenticate,
-  authorize(["admin", "omborchi"]),
+  // authenticate,
+  // authorize(["admin", "omborchi"]),
   warehouseCtrl.getRooms,
 );
 router.get(
@@ -111,6 +111,18 @@ router.post(
   authenticate,
   authorize(["admin", "omborchi"]),
   warehouseCtrl.chiqim,
+);
+router.put(
+  "/warehouse/:id/products/:productId",
+  authenticate,
+  authorize(["admin", "omborchi"]),
+  warehouseCtrl.updateRoomProduct,
+);
+router.put(
+  "/warehouse/:id/products/:productId/price",
+  // authenticate,
+  // authorize(["admin", "omborchi"]),
+  warehouseCtrl.updateProductPrice,
 );
 router.get(
   "/warehouse/:id/kirimlar",
